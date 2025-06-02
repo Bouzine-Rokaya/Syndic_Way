@@ -1,0 +1,196 @@
+
+.purchase-form {
+    padding: 4rem 0;
+    background: var(--color-white);
+}
+
+.purchase-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.purchase-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.purchase-header h1 {
+    font-size: 2.5rem;
+    color: var(--color-dark-grey);
+    margin-bottom: 1rem;
+}
+
+.purchase-wrapper {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 3rem;
+}
+
+.plan-summary {
+    background: var(--color-white);
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px var(--color-grey);
+    height: fit-content;
+    position: sticky;
+    top: 2rem;
+}
+
+.selected-plan-card h4 {
+    color: var(--color-yellow);
+    margin-bottom: 1rem;
+}
+
+.plan-price {
+    margin-bottom: 1.5rem;
+    text-align: center;
+    padding: 1rem;
+    background: var(--color-white);
+    border-radius: 8px;
+}
+
+.plan-price .amount {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--color-yellow);
+}
+
+.plan-benefits {
+    list-style: none;
+    padding: 0;
+}
+
+.plan-benefits li {
+    padding: 0.5rem 0;
+    color: var(--color-dark-grey);
+}
+
+.plan-benefits i {
+    color: var(--color-green);
+    margin-right: 0.75rem;
+}
+
+.form-section {
+    background: var(--color-white);
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px var(--color-grey);
+}
+
+.form-section-header {
+    border-bottom: 2px solid var(--color-light-grey);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+.form-section-header h3 {
+    color: var(--color-dark-grey);
+    margin: 0;
+}
+
+.form-section-header i {
+    color: var(--color-yellow);
+    margin-right: 0.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.payment-summary {
+    background: var(--color-white);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+}
+
+.summary-row.total {
+    border-top: 2px solid var(--color-white);
+    margin-top: 1rem;
+    padding-top: 1rem;
+}
+
+.free {
+    color: var(--color-green);
+    font-weight: bold;
+}
+
+.terms-section {
+    margin-bottom: 2rem;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 0.75rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.trust-section {
+    padding: 2rem 0;
+    background: var(--color-white);
+    border-top: 1px solid var(--color-light-grey);
+}
+
+.trust-items {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    flex-wrap: wrap;
+}
+
+.trust-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-grey);
+}
+
+.trust-item i {
+    color: var(--color-green);
+    font-size: 1.2rem;
+}
+
+@media (max-width: 768px) {
+    .purchase-wrapper {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .trust-items {
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+    }
+}
+
+.btn-large {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+}
