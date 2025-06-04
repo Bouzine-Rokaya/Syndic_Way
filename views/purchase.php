@@ -121,6 +121,12 @@ require __DIR__ . '/../controllers/AuthController.php';
                             </div>
 
                             <div class="form-group">
+                                <label for="company_city">Ville *</label>
+                                <input type="text" id="company_city" name="company_city" 
+                                       value="<?php echo htmlspecialchars($_POST['city'] ?? ''); ?>" required>
+                            </div>
+
+                            <div class="form-group">
                                 <label for="company_address">Adresse du bâtiment</label>
                                 <textarea id="company_address" name="company_address" rows="3"><?php echo htmlspecialchars($_POST['address'] ?? ''); ?></textarea>
                             </div>

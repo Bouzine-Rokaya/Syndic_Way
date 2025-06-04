@@ -24,7 +24,6 @@ $query = "
     JOIN admin_member_subscription a ON a.id_member = m.id_member
     JOIN subscription s ON s.id_subscription = a.id_subscription
 
-
     LEFT JOIN apartment ap ON ap.id_member = m.id_member AND ap.id_residence IS NOT NULL
     LEFT JOIN residence r ON r.id_residence = ap.id_residence
     LEFT JOIN city c ON c.id_city = r.id_city
