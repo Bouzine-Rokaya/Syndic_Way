@@ -82,7 +82,7 @@ $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <div class="nav-user">
             <span><i class="fas fa-user"></i> <?php echo $_SESSION['user_name']; ?></span>
             <a href="logout.php" class="btn btn-logout">
-                <i class="fas fa-sign-out-alt"></i> Logout
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
             </a>
         </div>
     </nav>
@@ -97,37 +97,37 @@ $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <ul>
                     <li class="active">
                         <a href="dashboard.php">
-                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                            <i class="fas fa-tachometer-alt"></i> Tableau de bord
                         </a>
                     </li>
                     <li>
                         <a href="subscriptions.php">
-                            <i class="fas fa-tags"></i> Subscriptions
+                            <i class="fas fa-tags"></i> Abonnements
                         </a>
                     </li>
                     <li>
                         <a href="syndic-accounts.php">
-                            <i class="fas fa-building"></i> Syndic Accounts
+                            <i class="fas fa-building"></i> Comptes Syndic
                         </a>
                     </li>
                     <li>
                         <a href="users.php">
-                            <i class="fas fa-users"></i> Users
+                            <i class="fas fa-users"></i> Utilisateurs
                         </a>
                     </li>
                     <li>
                         <a href="purchases.php">
-                            <i class="fas fa-shopping-cart"></i> Purchases
+                            <i class="fas fa-shopping-cart"></i> Achats
                         </a>
                     </li>
                     <li>
                         <a href="reports.php">
-                            <i class="fas fa-chart-bar"></i> Reports
+                            <i class="fas fa-chart-bar"></i> Rapports
                         </a>
                     </li>
                     <li>
                         <a href="settings.php">
-                            <i class="fas fa-cog"></i> Settings
+                            <i class="fas fa-cog"></i> Paramètres
                         </a>
                     </li>
                 </ul>
@@ -137,8 +137,8 @@ $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- Main Content -->
         <main class="main-content">
             <div class="content-header">
-                <h1>Admin Dashboard</h1>
-                <p>Welcome back, <?php echo $_SESSION['user_name']; ?>!</p>
+                <h1>Administrateur système</h1>
+                <p>Bienvenue,  <?php echo $_SESSION['user_name']; ?>!</p>
             </div>
 
             <!-- Alert Messages -->
@@ -165,7 +165,7 @@ $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <i class="fas fa-building"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Total Syndics</h3>
+                        <h3>Syndics au total :</h3>
                         <div class="stat-number"><?php echo $total_syndics; ?></div>
                     </div>
                 </div>
@@ -175,7 +175,7 @@ $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Total Users</h3>
+                        <h3>Utilisateurs au total :</h3>
                         <div class="stat-number"><?php echo $total_members; ?></div>
                     </div>
                 </div>
@@ -185,7 +185,7 @@ $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <i class="fas fa-clock"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Pending Purchases</h3>
+                        <h3>Achats en attente :</h3>
                         <div class="stat-number"><?php echo $pending_purchases; ?></div>
                     </div>
                 </div>
@@ -195,7 +195,7 @@ $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <i class="fas fa-tags"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Active Plans</h3>
+                        <h3>Forfaits actifs :</h3>
                         <div class="stat-number"><?php echo $total_subscriptions; ?></div>
                     </div>
                 </div>
@@ -203,58 +203,58 @@ $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- last updated indicator -->
             <div class="stats-footer">
-                <small class="text-muted last-updated">Last updated: <?php echo date('H:i:s'); ?></small>
+                <small class="text-muted last-updated">Dernière mise à jour : <?php echo date('H:i:s'); ?></small>
             </div>
 
             <!-- Quick Actions -->
             <div class="content-section">
-                <h2>Quick Actions</h2>
+                <h2>Actions rapides</h2>
                 <div class="quick-actions">
                     <a href="syndic-accounts.php" class="action-card">
                         <i class="fas fa-plus-circle"></i>
-                        <h3>Create Syndic Account</h3>
-                        <p>Process new subscription purchases</p>
+                        <h3>Créer un compte Syndic</h3>
+                        <p>Traiter les nouveaux achats d'abonnements</p>
                     </a>
 
                     <a href="subscriptions.php" class="action-card">
                         <i class="fas fa-edit"></i>
-                        <h3>Manage Subscriptions</h3>
-                        <p>Edit pricing and features</p>
+                        <h3>Gérer les abonnements</h3>
+                        <p>Modifier les tarifs et les fonctionnalités</p>
                     </a>
 
                     <a href="users.php" class="action-card">
                         <i class="fas fa-user-cog"></i>
-                        <h3>User Management</h3>
-                        <p>Manage system users</p>
+                        <h3>Gestion des utilisateurs</h3>
+                        <p>Gérer les utilisateurs du système</p>
                     </a>
 
                     <a href="reports.php" class="action-card">
                         <i class="fas fa-chart-line"></i>
-                        <h3>View Reports</h3>
-                        <p>System analytics and reports</p>
+                        <h3>Voir les rapports</h3>
+                        <p>Analyses et rapports du système</p>
                     </a>
                 </div>
             </div>
 
             <!-- Recent Purchases -->
             <div class="content-section">
-                <h2>Recent Purchases</h2>
+                <h2>Achats récents</h2>
                 <?php if (!empty($recent_purchases)): ?>
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
                                 <tr>
                                     <th>Date</th>
-                                    <th>Customer</th>
-                                    <th>Plan</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
+                                    <th>Client</th>
+                                    <th>Forfait</th>
+                                    <th>Montant</th>
+                                    <th>Statut</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php foreach ($recent_purchases as $purchase): ?>
-                                    <tr>
+                                   <tr>
                                         <td><?php echo date('j M Y', strtotime($purchase['purchase_date'])); ?></td>
                                         <td>
                                             <strong><?php echo htmlspecialchars($purchase['syndic_name']); ?></strong><br>
@@ -270,9 +270,9 @@ $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <td>
                                             <?php if (!$purchase['is_processed']): ?>
                                                 <a href="process-purchase.php?id=<?php echo $purchase['id']; ?>"
-                                                    class="btn btn-sm btn-primary">Process</a>
+                                                    class="btn btn-sm btn-primary">Traiter</a>
                                             <?php else: ?>
-                                                <span class="text-muted">Processed</span>
+                                                <span class="text-muted">Traité</span>
                                             <?php endif; ?>
                                         </td>
                                     </tr>
@@ -283,8 +283,8 @@ $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <?php else: ?>
                     <div class="empty-state">
                         <i class="fas fa-shopping-cart"></i>
-                        <h3>No recent purchases</h3>
-                        <p>New subscription purchases will appear here.</p>
+                        <h3>Aucun achat récent</h3>
+                        <p>Les nouveaux achats d’abonnements apparaîtront ici.</p>
                     </div>
                 <?php endif; ?>
             </div>
