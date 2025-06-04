@@ -1,5 +1,51 @@
 <?php
 $page_title = "Purchase Successful - Syndic Way";
+
+require __DIR__ . "/../config.php";
+
+$member_id = $_GET['id'] ?? null;
+
+if (!$member_id) {
+    header('Location: index.php');
+    exit();
+}
+
+// Fetch purchase and user details (removed residence join and company_name)
+
+$query = "
+    SELECT 
+        m.full_name, 
+        s.name_subscription AS plan_name,
+        a.amount AS amount_paid,
+        a.date_payment AS purchase_date,
+        r.name AS company_name,
+        c.city_name AS company_city
+    FROM member m
+    JOIN admin_member_subscription a ON a.id_member = m.id_member
+    JOIN subscription s ON s.id_subscription = a.id_subscription
+
+
+    LEFT JOIN apartment ap ON ap.id_member = m.id_member AND ap.id_residence IS NOT NULL
+    LEFT JOIN residence r ON r.id_residence = ap.id_residence
+    LEFT JOIN city c ON c.id_city = r.id_city
+    WHERE m.id_member = :id
+    ORDER BY a.date_payment DESC
+    LIMIT 1
+";
+
+
+
+$stmt = $conn->prepare($query);
+$stmt->bindParam(':id', $member_id, PDO::PARAM_INT);
+$stmt->execute();
+$purchase = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$purchase) {
+    header('Location: index.php');
+    exit();
+}
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -7,7 +53,7 @@ $page_title = "Purchase Successful - Syndic Way";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?></title>
-    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="http://localhost/syndicplatform/css/sections/purchase-success.css">
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -19,208 +65,66 @@ $page_title = "Purchase Successful - Syndic Way";
                     <i class="fas fa-check-circle"></i>
                 </div>
                 
-                <h1>Purchase Successful!</h1>
-                <p class="success-message">Thank you for choosing Syndic Way. Your subscription has been activated.</p>
+                <h1>Achat réussi !</h1>
+                <p class="success-message">Merci d'avoir choisi Syndic Way. Votre abonnement a été activé avec succès.</p>
                 
                 <div class="purchase-details">
-                    <h3>Purchase Details</h3>
+                    <h3>Détails de l'achat</h3>
                     <div class="detail-row">
-                        <span>Plan:</span>
+                        <span>Forfait :</span>
                         <span><?php echo htmlspecialchars($purchase['plan_name']); ?></span>
                     </div>
                     <div class="detail-row">
-                        <span>Company:</span>
-                        <span><?php echo htmlspecialchars($purchase['company_name']); ?></span>
+                        <span>Ville :</span>
+                        <span><?php echo htmlspecialchars($purchase['company_city'] ?? 'Non spécifiée'); ?></span>
+                        </div>
+                    <div class="detail-row">
+                        <span>Residence :</span>
+                        <span><?php echo htmlspecialchars($purchase['company_name'] ?? 'Non spécifiée'); ?></span>
                     </div>
                     <div class="detail-row">
-                        <span>Amount:</span>
+                        <span>Montant :</span>
                         <span><?php echo number_format($purchase['amount_paid'], 2); ?>DH</span>
                     </div>
                     <div class="detail-row">
-                        <span>Purchase Date:</span>
-                        <span><?php echo date('F j, Y', strtotime($purchase['purchase_date'])); ?></span>
+                        <span>Date d'achat :</span>
+                        <span><?php echo date('j F Y', strtotime($purchase['purchase_date'])); ?></span>
                     </div>
                 </div>
                 
                 <div class="next-steps">
-                    <h3>What's Next?</h3>
+                    <h3>Et maintenant ?</h3>
                     <div class="steps">
                         <div class="step">
                             <div class="step-number">1</div>
                             <div class="step-content">
-                                <h4>Account Creation</h4>
-                                <p>Our team will create your syndicate account within 24 hours.</p>
+                                <h4>Création du compte</h4>
+                                <p>Notre équipe créera votre compte syndic sous 24 heures.</p>
                             </div>
                         </div>
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
-                                <h4>Receive Credentials</h4>
-                                <p>You'll receive login credentials and setup instructions via email.</p>
+                                <h4>Réception des identifiants</h4>
+                                <p>Vous recevrez vos identifiants de connexion et les instructions par e-mail.</p>
                             </div>
                         </div>
                         <div class="step">
                             <div class="step-number">3</div>
                             <div class="step-content">
-                                <h4>Start Managing</h4>
-                                <p>Log in and start managing your building efficiently!</p>
+                                <h4>Commencez la gestion</h4>
+                                <p>Connectez-vous et commencez à gérer votre immeuble efficacement !</p>
                             </div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="action-buttons">
-                    <a href="index.php" class="btn btn-primary">Return to Home</a>
-                    <a href="mailto:support@syndicate.com" class="btn btn-secondary">Contact Support</a>
+                    <a href="index.php" class="btn btn-primary">Retour à l'accueil</a>
+                    <a href="mailto:support@syndicate.com" class="btn btn-secondary">Contacter le support</a>
                 </div>
             </div>
         </div>
     </section>
-
-    <style>
-        .success-page {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .success-content {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            text-align: center;
-        }
-        
-        .success-icon {
-            font-size: 5rem;
-            color: #28a745;
-            margin-bottom: 2rem;
-        }
-        
-        .success-content h1 {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-        
-        .success-message {
-            font-size: 1.2rem;
-            margin-bottom: 3rem;
-            opacity: 0.9;
-        }
-        
-        .purchase-details {
-            background: rgba(255,255,255,0.1);
-            padding: 2rem;
-            border-radius: 10px;
-            margin-bottom: 3rem;
-            text-align: left;
-        }
-        
-        .purchase-details h3 {
-           text-align: center;
-           margin-bottom: 1.5rem;
-           color: white;
-       }
-       
-       .detail-row {
-           display: flex;
-           justify-content: space-between;
-           padding: 0.75rem 0;
-           border-bottom: 1px solid rgba(255,255,255,0.2);
-       }
-       
-       .detail-row:last-child {
-           border-bottom: none;
-       }
-       
-       .next-steps {
-           margin-bottom: 3rem;
-       }
-       
-       .next-steps h3 {
-           margin-bottom: 2rem;
-       }
-       
-       .steps {
-           display: grid;
-           grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-           gap: 2rem;
-           text-align: left;
-       }
-       
-       .step {
-           display: flex;
-           align-items: flex-start;
-           gap: 1rem;
-       }
-       
-       .step-number {
-           background: rgba(255,255,255,0.2);
-           color: white;
-           width: 40px;
-           height: 40px;
-           border-radius: 50%;
-           display: flex;
-           align-items: center;
-           justify-content: center;
-           font-weight: bold;
-           flex-shrink: 0;
-       }
-       
-       .step-content h4 {
-           margin-bottom: 0.5rem;
-           color: white;
-       }
-       
-       .step-content p {
-           opacity: 0.9;
-           margin: 0;
-       }
-       
-       .action-buttons {
-           display: flex;
-           gap: 1rem;
-           justify-content: center;
-           flex-wrap: wrap;
-       }
-       
-       @media (max-width: 768px) {
-           .success-content h1 {
-               font-size: 2rem;
-           }
-           
-           .success-icon {
-               font-size: 3rem;
-           }
-           
-           .purchase-details {
-               text-align: center;
-           }
-           
-           .detail-row {
-               flex-direction: column;
-               text-align: center;
-               gap: 0.25rem;
-           }
-           
-           .steps {
-               grid-template-columns: 1fr;
-               text-align: center;
-           }
-           
-           .step {
-               flex-direction: column;
-               align-items: center;
-               text-align: center;
-           }
-           
-           .action-buttons {
-               flex-direction: column;
-               align-items: center;
-           }
-       }
-   </style>
 </body>
 </html>
