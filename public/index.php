@@ -36,10 +36,10 @@ switch($page) {
         require_once __DIR__ . '/../views/purchase.php';
        
         break;
-    // case 'purchase-success':
-    //     require_once __DIR__ . '/../controllers/SubscriptionController.php';
+    case 'purchase-success':
+        require_once __DIR__ . '/../views/purchase-success.php';
       
-    //     break;
+        break;
     default:
         echo 'hello';
 }
