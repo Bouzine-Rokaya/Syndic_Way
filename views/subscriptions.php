@@ -29,7 +29,7 @@ require_once __DIR__ . '/../controllers/SubscriptionController.php';
     <nav class="landing-nav">
         <div class="container">
             <div class="nav-brand">
-                <h2>syndic-way</h2>
+                <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/syndic-way-3l3Tx2e1PrjISxRnMx9Sk4ut1e4AQ1.png" alt="Syndic-Way" class="logo-img">
             </div>
             <div class="nav-links">
                 <a href="?page=home">Accueil</a>
