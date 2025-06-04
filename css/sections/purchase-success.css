@@ -1,0 +1,144 @@
+
+.success-page {
+    min-height: 100vh;
+    align-items: center;
+    background: var(--color-yellow);
+    color: var(--color-white);
+}
+
+.success-content {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+    text-align: center;
+}
+
+.success-icon {
+    font-size: 5rem;
+    color: var(--color-green);
+    margin-bottom: 2rem;
+}
+
+.success-content h1 {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.success-message {
+    font-size: 1.2rem;
+    margin-bottom: 3rem;
+    opacity: 0.9;
+}
+
+.purchase-details {
+    background: var(--color-degree-grey-1);
+    box-shadow: 1px 5px 22px var(--color-degree-grey-2);
+    padding: 2rem;
+    border-radius: 10px;
+    margin-bottom: 3rem;
+    text-align: left;
+}
+
+.purchase-details h3 {
+   text-align: center;
+   margin-bottom: 1.5rem;
+   color: var(--color-white);
+}
+
+.detail-row {
+   display: flex;
+   justify-content: space-between;
+   padding: 0.75rem 0;
+   border-bottom: 1px solid var(--color-grey);
+}
+
+.detail-row:last-child {
+   border-bottom: none;
+}
+
+.next-steps {
+   margin-bottom: 3rem;
+}
+
+.next-steps h3 {
+   margin-bottom: 2rem;
+}
+
+.steps {
+   display: grid;
+   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+   gap: 2rem;
+   text-align: left;
+}
+
+.step {
+   display: flex;
+   align-items: flex-start;
+   gap: 1rem;
+}
+
+.step-number {
+   background:var(--color-degree-grey-1);
+   color: var(--color-white);
+   width: 40px;
+   height: 40px;
+   border-radius: 50%;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   font-weight: bold;
+   flex-shrink: 0;
+}
+
+.step-content h4 {
+   margin-bottom: 0.5rem;
+   color: var(--color-white);
+}
+
+.step-content p {
+   opacity: 0.9;
+   margin: 0;
+}
+
+.action-buttons {
+   display: flex;
+   gap: 1rem;
+   justify-content: center;
+   flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+   .success-content h1 {
+       font-size: 2rem;
+   }
+   
+   .success-icon {
+       font-size: 3rem;
+   }
+   
+   .purchase-details {
+       text-align: center;
+   }
+   
+   .detail-row {
+       flex-direction: column;
+       text-align: center;
+       gap: 0.25rem;
+   }
+   
+   .steps {
+       grid-template-columns: 1fr;
+       text-align: center;
+   }
+   
+   .step {
+       flex-direction: column;
+       align-items: center;
+       text-align: center;
+   }
+   
+   .action-buttons {
+       flex-direction: column;
+       align-items: center;
+   }
+}
