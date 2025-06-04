@@ -1,46 +1,64 @@
 <?php
 session_start();
-require_once '../config.php';
-// require_once '../config/database.php';
-// require_once '../utils/helpers.php';
+require_once __DIR__ . '/../config.php';
 
-// Check if user is logged in and is admin
+// Check if user is logged in and is an admin
+if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
+    header('Location: ../public/login.php');
+    exit();
+}
+try {
+    // Get total subscriptions
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM subscription WHERE is_active = 1");
+    $stmt->execute();
+    $total_subscriptions = $stmt->fetch()['count'];
 
+    // Get total admins
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM admin");
+    $stmt->execute();
+    $total_admins = $stmt->fetch()['count'];
 
-$page_title = "Admin Dashboard";
+    // Get total members
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM member");
+    $stmt->execute();
+    $total_members = $stmt->fetch()['count'];
 
-// Get statistics
+    // Get total syndics
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM member WHERE role = 2");
+    $stmt->execute();
+    $total_syndics = $stmt->fetch()['count'];
 
-// try {
-//     // Get total syndics
-//     $stmt = $db->query("SELECT COUNT(*) as count FROM syndic");
-//     $total_syndics = $stmt->fetch()['count'];
+    // Get total pending purchases
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM member WHERE status = 'pending'");
+    $stmt->execute();
+    $pending_purchases = $stmt->fetch()['count'];
 
-//     // Get total users
-//     $stmt = $db->query("SELECT COUNT(*) as count FROM utilisateur WHERE is_active = 1");
-//     $total_users = $stmt->fetch()['count'];
+    // Get latest subscription purchases
+    $stmt = $conn->prepare("
+        SELECT 
+            a.name AS admin_name, 
+            m.full_name AS member_name,
+            s.name_subscription AS subscription_name,
+            s.price_subscription,
+            ams.date_payment,
+            ams.amount,
+            ams.is_processed
+        FROM admin_member_subscription ams
+        JOIN admin a ON ams.id_admin = a.id_admin
+        JOIN member m ON ams.id_member = m.id_member
+        JOIN subscription s ON ams.id_subscription = s.id_subscription
+        ORDER BY ams.date_payment DESC
+        LIMIT 5
+    ");
+    $stmt->execute();
+    $latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-//     // Get pending purchases
-//     $stmt = $db->query("SELECT COUNT(*) as count FROM subscription_purchases WHERE is_processed = 0");
-//     $pending_purchases = $stmt->fetch()['count'];
+} catch(PDOException $e) {
+    error_log($e->getMessage());
+    $_SESSION['error'] = "An error occurred while fetching dashboard data.";
+}
 
-//     // Get total subscriptions
-//     $stmt = $db->query("SELECT COUNT(*) as count FROM subscriptions WHERE is_active = 1");
-//     $total_subscriptions = $stmt->fetch()['count'];
-
-//     // Get recent purchases
-//     $stmt = $db->query("SELECT sp.*, s.name as plan_name FROM subscription_purchases sp 
-//                         JOIN subscriptions s ON sp.subscription_id = s.id_subscription 
-//                         ORDER BY sp.purchase_date DESC LIMIT 5");
-//     $recent_purchases = $stmt->fetchAll();
-
-// } catch (Exception $e) {
-//     $total_syndics = 0;
-//     $total_users = 0;
-//     $pending_purchases = 0;
-//     $total_subscriptions = 0;
-//     $recent_purchases = [];
-// }
+$latest_subscriptions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -158,7 +176,7 @@ $page_title = "Admin Dashboard";
                     </div>
                     <div class="stat-content">
                         <h3>Total Users</h3>
-                        <div class="stat-number"><?php echo $total_users; ?></div>
+                        <div class="stat-number"><?php echo $total_members; ?></div>
                     </div>
                 </div>
 
@@ -237,13 +255,13 @@ $page_title = "Admin Dashboard";
                             <tbody>
                                 <?php foreach ($recent_purchases as $purchase): ?>
                                     <tr>
-                                        <td><?php echo date('M j, Y', strtotime($purchase['purchase_date'])); ?></td>
+                                        <td><?php echo date('j M Y', strtotime($purchase['purchase_date'])); ?></td>
                                         <td>
                                             <strong><?php echo htmlspecialchars($purchase['syndic_name']); ?></strong><br>
                                             <small><?php echo htmlspecialchars($purchase['syndic_email']); ?></small>
                                         </td>
                                         <td><?php echo htmlspecialchars($purchase['plan_name']); ?></td>
-                                        <td>€<?php echo number_format($purchase['amount_paid'], 2); ?></td>
+                                        <td><?php echo number_format($purchase['amount_paid'], 2); ?>DH</td>
                                         <td>
                                             <span class="status-badge status-<?php echo $purchase['payment_status']; ?>">
                                                 <?php echo ucfirst($purchase['payment_status']); ?>
