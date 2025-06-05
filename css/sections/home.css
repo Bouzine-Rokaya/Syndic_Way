@@ -15,7 +15,6 @@ body {
 /* Hero Section */
 .hero {
     position: relative;
-    margin-top: 80px;
     min-height: 60vh;
     display: flex;
     align-items: center;
