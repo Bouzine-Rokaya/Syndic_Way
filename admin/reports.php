@@ -317,7 +317,308 @@ $page_title = "Rapports - Syndic Way";
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/reports.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
 
+        .reports-overview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--color-white);
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+        }
+
+        .stat-card.subscriptions::before {
+            background: linear-gradient(135deg, var(--color-yellow), var(--primary-color));
+        }
+
+        .stat-card.syndics::before {
+            background: linear-gradient(135deg, var(--color-green), #20c997);
+        }
+
+        .stat-card.purchases::before {
+            background: linear-gradient(135deg, var(--primary-color), #2c5282);
+        }
+
+        .stat-card.revenue::before {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .stat-card i {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .stat-card.subscriptions i {
+            color: var(--color-yellow);
+        }
+
+        .stat-card.syndics i {
+            color: var(--color-green);
+        }
+
+        .stat-card.purchases i {
+            color: var(--primary-color);
+        }
+
+        .stat-card.revenue i {
+            color: #f39c12;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--color-dark-grey);
+        }
+
+        .stat-label {
+            color: var(--color-grey);
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .report-generators {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .report-card {
+            background: var(--color-white);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .report-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .report-card h3 {
+            color: var(--color-dark-grey);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .report-card p {
+            color: var(--color-grey);
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--color-dark-grey);
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--color-light-grey);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--color-yellow);
+            box-shadow: 0 0 0 4px rgba(244, 185, 66, 0.15);
+        }
+
+        .report-results {
+            background: var(--color-white);
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .report-header {
+            background: linear-gradient(135deg, var(--color-yellow), var(--primary-color));
+            color: var(--color-white);
+            padding: 1.5rem 2rem;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .report-content {
+            padding: 2rem;
+        }
+
+        .chart-container {
+            margin: 2rem 0;
+            height: 400px;
+            position: relative;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .data-section {
+            background: var(--color-light-grey);
+            padding: 1.5rem;
+            border-radius: 10px;
+        }
+
+        .data-section h4 {
+            color: var(--color-dark-grey);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--color-white);
+        }
+
+        .data-table th {
+            background: var(--color-dark-grey);
+            color: var(--color-white);
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .data-table tr:hover {
+            background: rgba(244, 185, 66, 0.1);
+        }
+
+        .metric-card {
+            background: var(--color-white);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--color-yellow);
+        }
+
+        .metric-label {
+            color: var(--color-grey);
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: var(--color-light-grey);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, var(--color-yellow), var(--primary-color));
+            transition: width 1s ease;
+        }
+
+        .export-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .report-generators {
+                grid-template-columns: 1fr;
+            }
+            
+            .data-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .export-actions {
+                flex-direction: column;
+            }
+        }
+
+        .percentage-badge {
+            background: var(--color-green);
+            color: var(--color-white);
+            padding: 0.3rem 0.6rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .trend-up {
+            color: var(--color-green);
+        }
+
+        .trend-down {
+            color: var(--primary-color);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+    </style>
 </head>
 
 <body>
