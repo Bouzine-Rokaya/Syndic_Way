@@ -7,7 +7,7 @@ require_once __DIR__ . '/../config.php';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
-    
+
     $login_successful = false;
 
     // 1. Check Admin
@@ -42,13 +42,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         exit;
     }
-    
+
     // If we reach here, login failed
     $_SESSION['error'] = "Email ou mot de passe incorrect.";
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Login - Syndic Way</title>
@@ -62,6 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 2px solid #28a745 !important;
             transition: all 0.3s ease;
         }
+
         .testing-info {
             background: #e7f3ff;
             padding: 10px;
@@ -70,11 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border-left: 4px solid #007bff;
             font-size: 14px;
         }
+
         .testing-info strong {
             color: #007bff;
         }
     </style>
 </head>
+
 <body>
     <div class="auth-container">
         <div class="image">
@@ -93,15 +97,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <?php
-                    if (isset($_SESSION['error'])) {
-                        echo "<div class='alert alert-error'>" . $_SESSION['error'] . "</div>";
-                        unset($_SESSION['error']);
-                    }
-                    
-                    if (isset($_SESSION['success'])) {
-                        echo "<div class='alert alert-success'>" . $_SESSION['success'] . "</div>";
-                        unset($_SESSION['success']);
-                    }
+                if (isset($_SESSION['error'])) {
+                    echo "<div class='alert alert-error'>" . $_SESSION['error'] . "</div>";
+                    unset($_SESSION['error']);
+                }
+
+                if (isset($_SESSION['success'])) {
+                    echo "<div class='alert alert-success'>" . $_SESSION['success'] . "</div>";
+                    unset($_SESSION['success']);
+                }
                 ?>
 
                 <form method="POST" action="">
@@ -109,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="email">Email :</label><br>
                         <input type="email" id="email" name="email" required>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="password">Mot de passe :</label><br>
                         <input type="password" id="password" name="password" required>
@@ -117,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="fas fa-eye" id="toggle-icon"></i>
                         </button>
                     </div>
-                    
+
                     <button type="submit" class="btn btn-primary btn-full">
                         <i class="fas fa-sign-in-alt"></i> Se connecter
                     </button>
@@ -125,13 +129,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 <div class="auth-footer">
                     <p><a href="http://localhost/syndicplatform/public/">← Retour à l'accueil</a></p>
-                    <p>Vous n'avez pas de compte ? <a href="http://localhost/syndicplatform/public/">Abonnez-vous maintenant</a></p>
-                    
+                    <p>Vous n'avez pas de compte ? <a href="http://localhost/syndicplatform/public/">Abonnez-vous
+                            maintenant</a></p>
+
                     <!-- Testing links (only in development) -->
                     <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
                         <p style="font-size: 12px; color: #666;">
-                            <strong>For Testing:</strong> 
-                            <a href="../views/test_accounts.php" style="color: #007bff;">Test Accounts</a> | 
+                            <strong>For Testing:</strong>
+                            <a href="../views/test_accounts.php" style="color: #007bff;">Test Accounts</a> |
                             <a href="../views/email_viewer.php" style="color: #007bff;">Email Viewer</a>
                         </p>
                     </div>
@@ -142,55 +147,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <script>
         // Auto-fill functionality for testing
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const autoEmail = sessionStorage.getItem('auto_fill_email');
             const autoPassword = sessionStorage.getItem('auto_fill_password');
-            
+
             if (autoEmail && autoPassword) {
                 const emailField = document.querySelector('#email');
                 const passwordField = document.querySelector('#password');
                 const testingInfo = document.querySelector('#testing-info');
-                
+
                 if (emailField && passwordField) {
                     // Fill the fields
                     emailField.value = autoEmail;
                     passwordField.value = autoPassword;
-                    
+
                     // Show testing info
                     if (testingInfo) {
                         testingInfo.style.display = 'block';
                     }
-                    
+
                     // Clear the session storage
                     sessionStorage.removeItem('auto_fill_email');
                     sessionStorage.removeItem('auto_fill_password');
-                    
+
                     // Add visual feedback
                     emailField.classList.add('auto-filled');
                     passwordField.classList.add('auto-filled');
-                    
+
                     // Remove highlighting after 3 seconds
                     setTimeout(() => {
                         emailField.classList.remove('auto-filled');
                         passwordField.classList.remove('auto-filled');
                     }, 3000);
-                    
+
                     // Optional: Auto-focus the submit button
                     setTimeout(() => {
                         document.querySelector('.btn-primary').focus();
                     }, 500);
                 }
             }
-            
+
             // Check for URL parameters (alternative method)
             const urlParams = new URLSearchParams(window.location.search);
             const emailParam = urlParams.get('email');
             const passwordParam = urlParams.get('password');
-            
+
             if (emailParam && passwordParam) {
                 document.querySelector('#email').value = decodeURIComponent(emailParam);
                 document.querySelector('#password').value = decodeURIComponent(passwordParam);
-                
+
                 // Clean URL
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
@@ -200,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         function togglePassword() {
             const passwordField = document.querySelector('#password');
             const toggleIcon = document.querySelector('#toggle-icon');
-            
+
             if (passwordField.type === 'password') {
                 passwordField.type = 'text';
                 toggleIcon.classList.remove('fa-eye');
@@ -219,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Add keyboard shortcut for testing (Ctrl+Shift+T)
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             if (e.ctrlKey && e.shiftKey && e.key === 'T') {
                 fillTestAccount();
                 e.preventDefault();
@@ -232,26 +237,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .form-group {
             position: relative;
         }
-        
+
         .password-toggle {
             position: absolute;
-            right: 10px;
-            top: 35px;
+            right: 15px;
+            top: 63px;
             background: none;
             border: none;
             cursor: pointer;
             color: #666;
             font-size: 16px;
         }
-        
+
         .password-toggle:hover {
             color: #007bff;
         }
-        
+
         /* Ensure password field has padding for the toggle button */
         #password {
             padding-right: 40px;
         }
     </style>
 </body>
+
 </html>

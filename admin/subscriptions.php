@@ -431,6 +431,6 @@ $page_title = "Gestion des Abonnements - Syndic Way";
        <input type="hidden" name="id_subscription" id="toggleSubscriptionId">
        <input type="hidden" name="new_status" id="toggleNewStatus">
    </form>
-
+   <script src="js/sections/dashboard.js"></script>
 </body>
 </html>
