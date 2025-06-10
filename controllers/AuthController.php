@@ -16,13 +16,13 @@ if (!$plan) {
     exit();
 }
 
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Récupérer les champs
     $name = trim($_POST['syndic_name'] ?? '');
     $email = trim($_POST['syndic_email'] ?? '');
     $phone = trim($_POST['syndic_phone'] ?? '');
     $company = trim($_POST['company_name'] ?? '');
+    $city = trim($_POST['company_city'] ?? '');
     $address = trim($_POST['company_address'] ?? '');
 
     $errors = [];
@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email invalide.";
     if (empty($phone)) $errors[] = "Téléphone requis.";
     if (empty($company)) $errors[] = "Nom de la société requis.";
+    if (empty($city)) $errors[] = "Ville requise.";
 
     if (!empty($errors)) {
         $_SESSION['errors'] = $errors;
@@ -50,20 +51,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $conn->beginTransaction();
 
-        // Insérer le membre
-        //$password = password_hash('default_pass123', PASSWORD_DEFAULT);
+        // 1. Insérer ou récupérer la ville
+        $stmt = $conn->prepare("SELECT id_city FROM city WHERE city_name = ?");
+        $stmt->execute([$city]);
+        $city_id = $stmt->fetchColumn();
+        
+        if (!$city_id) {
+            $stmt = $conn->prepare("INSERT INTO city (city_name) VALUES (?)");
+            $stmt->execute([$city]);
+            $city_id = $conn->lastInsertId();
+        }
+
+        // 2. Insérer la résidence
+        $stmt = $conn->prepare("INSERT INTO residence (id_city, name, address) VALUES (?, ?, ?)");
+        $stmt->execute([$city_id, $company, $address]);
+        $residence_id = $conn->lastInsertId();
+
+        // 3. Insérer le membre
+        $default_password = password_hash('default_pass123', PASSWORD_DEFAULT);
         $stmt = $conn->prepare("INSERT INTO member (full_name, email, password, phone, role, status)
                                 VALUES (?, ?, ?, ?, 2, 'pending')");
-        $stmt->execute([$name, $email, $password, $phone]);
+        $stmt->execute([$name, $email, $default_password, $phone]);
         $member_id = $conn->lastInsertId();
-        
 
-        // Lier à admin (id=1 par défaut)
+        // 4. Créer un appartement par défaut pour ce membre
+        $stmt = $conn->prepare("INSERT INTO apartment (id_residence, id_member, type, floor, number) 
+                               VALUES (?, ?, 'Standard', '1', 1)");
+        $stmt->execute([$residence_id, $member_id]);
+
+        // 5. Lier à admin (id=1 par défaut)
         $stmt = $conn->prepare("INSERT INTO admin_member_link (id_admin, id_member, date_created)
                                 VALUES (1, ?, NOW())");
         $stmt->execute([$member_id]);
 
-        // Enregistrer l'abonnement
+        // 6. Enregistrer l'abonnement
         $stmt = $conn->prepare("INSERT INTO admin_member_subscription 
                                (id_admin, id_member, id_subscription, date_payment, amount)
                                VALUES (1, ?, ?, NOW(), ?)");

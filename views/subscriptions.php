@@ -3,10 +3,7 @@ session_start();
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../controllers/SubscriptionController.php';
 
-    // $query = "SELECT * FROM subscription WHERE is_active = 1 ORDER BY price_subscription ASC";
-    // $stmt = $conn->prepare($query);
-    // $stmt->execute();
-    // $plans= $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 ?>
 
 
