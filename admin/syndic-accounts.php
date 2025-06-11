@@ -201,7 +201,282 @@ $page_title = "Comptes Syndic - Syndic Way";
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/sections/dashboard.css">
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        .content-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
 
+        .filters-section {
+            background: var(--color-white);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 1.5rem;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: var(--color-dark-grey);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 1rem;
+            border: 2px solid var(--color-light-grey);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: var(--color-yellow);
+            box-shadow: 0 0 0 4px rgba(244, 185, 66, 0.15);
+        }
+
+        .accounts-table {
+            background: var(--color-white);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, var(--color-yellow), var(--primary-color));
+            color: var(--color-white);
+            padding: 1.5rem;
+        }
+
+        .table-header h3 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--color-light-grey);
+        }
+
+        .data-table th {
+            background: var(--color-light-grey);
+            font-weight: 700;
+            color: var(--color-dark-grey);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .data-table tr:hover {
+            background: rgba(244, 185, 66, 0.05);
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-active {
+            background: var(--color-green);
+            color: var(--color-white);
+        }
+
+        .status-pending {
+            background: var(--color-yellow);
+            color: var(--color-white);
+        }
+
+        .status-inactive {
+            background: var(--color-grey);
+            color: var(--color-white);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            border-radius: 6px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+        }
+
+        .modal.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            background-color: var(--color-white);
+            margin: 2% auto;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 700px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+            animation: slideInUp 0.3s ease;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, var(--color-yellow), var(--primary-color));
+            color: var(--color-white);
+            padding: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .close {
+            color: var(--color-white);
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .close:hover {
+            background-color: rgba(255,255,255,0.2);
+        }
+
+        .modal form {
+            padding: 2rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--color-dark-grey);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid var(--color-light-grey);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--color-yellow);
+            box-shadow: 0 0 0 4px rgba(244, 185, 66, 0.15);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--color-light-grey);
+        }
+
+        .required {
+            color: var(--primary-color);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInUp {
+            from { 
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .content-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -212,7 +487,7 @@ $page_title = "Comptes Syndic - Syndic Way";
         </div>
         <div class="nav-user">
             <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?></span>
-            <a href="logout.php" class="btn btn-logout">
+            <a href="../public/logout.php" class="btn btn-logout">
                 <i class="fas fa-sign-out-alt"></i> Déconnexion
             </a>
         </div>
@@ -520,7 +795,249 @@ $page_title = "Comptes Syndic - Syndic Way";
     </form>
 
     <script>
-        
+        function openModal() {
+            document.getElementById('syndicModal').classList.add('show');
+            document.getElementById('full_name').focus();
+        }
+
+        function closeModal() {
+            document.getElementById('syndicModal').classList.remove('show');
+        }
+
+        function updateStatus(memberId, newStatus) {
+            const statusText = {
+                'active': 'activer',
+                'inactive': 'suspendre',
+                'pending': 'mettre en attente'
+            };
+            
+            if (confirm(`Êtes-vous sûr de vouloir ${statusText[newStatus]} ce compte syndic ?`)) {
+               document.getElementById('statusMemberId').value = memberId;
+               document.getElementById('newStatus').value = newStatus;
+               document.getElementById('statusForm').submit();
+           }
+       }
+
+       function confirmDelete(memberId, syndicName) {
+           if (confirm(`Êtes-vous sûr de vouloir supprimer le compte de "${syndicName}" ?\n\nCette action est irréversible et supprimera toutes les données associées.`)) {
+               document.getElementById('deleteMemberId').value = memberId;
+               document.getElementById('deleteForm').submit();
+           }
+       }
+
+       // Auto-submit form when filters change
+       document.getElementById('search').addEventListener('input', function() {
+           clearTimeout(this.searchTimeout);
+           this.searchTimeout = setTimeout(() => {
+               document.getElementById('filtersForm').submit();
+           }, 500);
+       });
+
+       document.getElementById('status').addEventListener('change', function() {
+           document.getElementById('filtersForm').submit();
+       });
+
+       document.getElementById('city').addEventListener('change', function() {
+           document.getElementById('filtersForm').submit();
+       });
+
+       // Close modal when clicking outside
+       window.onclick = function(event) {
+           const modal = document.getElementById('syndicModal');
+           if (event.target === modal) {
+               closeModal();
+           }
+       }
+
+       // Close modal with Escape key
+       document.addEventListener('keydown', function(event) {
+           if (event.key === 'Escape') {
+               closeModal();
+           }
+       });
+
+       // Auto-hide alerts
+       document.addEventListener('DOMContentLoaded', function() {
+           const alerts = document.querySelectorAll('.alert');
+           alerts.forEach(alert => {
+               setTimeout(() => {
+                   alert.style.opacity = '0';
+                   alert.style.transform = 'translateY(-20px)';
+                   setTimeout(() => alert.remove(), 300);
+               }, 5000);
+           });
+       });
+
+       // Form validation
+       document.querySelector('#syndicModal form').addEventListener('submit', function(event) {
+           const email = document.getElementById('email').value;
+           const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+           
+           if (!emailRegex.test(email)) {
+               event.preventDefault();
+               alert('Veuillez entrer une adresse email valide.');
+               document.getElementById('email').focus();
+               return;
+           }
+       });
+
+       // Format phone number input
+       document.getElementById('phone').addEventListener('input', function() {
+           let value = this.value.replace(/\D/g, '');
+           if (value.length >= 10) {
+               value = value.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
+           }
+           this.value = value;
+       });
+
+       // Auto-capitalize city and company name
+       document.getElementById('city').addEventListener('input', function() {
+           this.value = this.value.replace(/\b\w/g, l => l.toUpperCase());
+       });
+
+       document.getElementById('company_name').addEventListener('input', function() {
+           this.value = this.value.replace(/\b\w/g, l => l.toUpperCase());
+       });
+
+       // Show loading state on form submission
+       document.querySelector('#syndicModal form').addEventListener('submit', function() {
+           const submitBtn = this.querySelector('button[type="submit"]');
+           const originalText = submitBtn.innerHTML;
+           
+           submitBtn.disabled = true;
+           submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création en cours...';
+           
+           // Reset after timeout if form doesn't redirect
+           setTimeout(() => {
+               submitBtn.disabled = false;
+               submitBtn.innerHTML = originalText;
+           }, 5000);
+       });
+
+       // Enhanced table interactions
+       document.querySelectorAll('.data-table tbody tr').forEach(row => {
+           row.addEventListener('mouseenter', function() {
+               this.style.backgroundColor = 'rgba(244, 185, 66, 0.1)';
+           });
+           
+           row.addEventListener('mouseleave', function() {
+               this.style.backgroundColor = '';
+           });
+       });
+
+       // Quick search functionality
+       let searchTimer;
+       document.getElementById('search').addEventListener('keyup', function(event) {
+           clearTimeout(searchTimer);
+           
+           // Submit on Enter key
+           if (event.key === 'Enter') {
+               document.getElementById('filtersForm').submit();
+               return;
+           }
+           
+           // Auto-submit after 800ms of no typing
+           searchTimer = setTimeout(() => {
+               if (this.value.length >= 3 || this.value.length === 0) {
+                   document.getElementById('filtersForm').submit();
+               }
+           }, 800);
+       });
+
+       // Keyboard shortcuts
+       document.addEventListener('keydown', function(event) {
+           // Ctrl/Cmd + N for new syndic
+           if ((event.ctrlKey || event.metaKey) && event.key === 'n') {
+               event.preventDefault();
+               openModal();
+           }
+           
+           // Ctrl/Cmd + F for search focus
+           if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+               event.preventDefault();
+               document.getElementById('search').focus();
+           }
+       });
+
+       // Progressive form enhancement
+       function validateForm() {
+           const requiredFields = document.querySelectorAll('#syndicModal input[required], #syndicModal select[required]');
+           let isValid = true;
+           
+           requiredFields.forEach(field => {
+               if (!field.value.trim()) {
+                   field.style.borderColor = '#dc3545';
+                   isValid = false;
+               } else {
+                   field.style.borderColor = 'var(--color-green)';
+               }
+           });
+           
+           return isValid;
+       }
+
+       // Real-time form validation
+       document.querySelectorAll('#syndicModal input, #syndicModal select').forEach(field => {
+           field.addEventListener('blur', function() {
+               if (this.hasAttribute('required')) {
+                   if (!this.value.trim()) {
+                       this.style.borderColor = '#dc3545';
+                   } else {
+                       this.style.borderColor = 'var(--color-green)';
+                   }
+               }
+           });
+
+           field.addEventListener('input', function() {
+               if (this.style.borderColor === 'rgb(220, 53, 69)' && this.value.trim()) {
+                   this.style.borderColor = 'var(--color-green)';
+               }
+           });
+       });
+
+       // Enhanced status update with animation
+       function updateStatusWithAnimation(memberId, newStatus) {
+           const row = document.querySelector(`tr[data-member-id="${memberId}"]`);
+           if (row) {
+               row.style.transition = 'all 0.3s ease';
+               row.style.transform = 'scale(1.02)';
+               row.style.backgroundColor = 'rgba(244, 185, 66, 0.2)';
+               
+               setTimeout(() => {
+                   updateStatus(memberId, newStatus);
+               }, 150);
+           } else {
+               updateStatus(memberId, newStatus);
+           }
+       }
+
+       // Add smooth transitions to buttons
+       document.querySelectorAll('.btn').forEach(btn => {
+           btn.addEventListener('mouseenter', function() {
+               this.style.transform = 'translateY(-2px)';
+           });
+           
+           btn.addEventListener('mouseleave', function() {
+               this.style.transform = 'translateY(0)';
+           });
+       });
+
+       // Statistics update
+       function updateStatistics() {
+           const totalRows = document.querySelectorAll('.data-table tbody tr').length;
+           const activeCount = document.querySelectorAll('.status-active').length;
+           const pendingCount = document.querySelectorAll('.status-pending').length;
+           const inactiveCount = document.querySelectorAll('.status-inactive').length;
+           
+           // Update header with live count
+           const header = document.querySelector('.table-header h3');
+           const currentText = header.textContent;
+           const newText = currentText.replace(/\(\d+\)/, `(${totalRows})`);
+           header.innerHTML = newText;
+       }
+
+       // Call statistics update on page load
+       document.addEventListener('DOMContentLoaded', updateStatistics);
    </script>
 </body>
 </html>

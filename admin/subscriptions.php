@@ -107,13 +107,13 @@ $page_title = "Gestion des Abonnements - Syndic Way";
 
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?></title>
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/sections/dashboard.css">
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
+    <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/subscriptions.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
@@ -125,7 +125,7 @@ $page_title = "Gestion des Abonnements - Syndic Way";
         </div>
         <div class="nav-user">
             <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?></span>
-            <a href="logout.php" class="btn btn-logout">
+            <a href="../public/logout.php" class="btn btn-logout">
                 <i class="fas fa-sign-out-alt"></i> Déconnexion
             </a>
         </div>
@@ -431,6 +431,7 @@ $page_title = "Gestion des Abonnements - Syndic Way";
        <input type="hidden" name="id_subscription" id="toggleSubscriptionId">
        <input type="hidden" name="new_status" id="toggleNewStatus">
    </form>
-   <script src="js/sections/dashboard.js"></script>
+
+   <script src="http://localhost/syndicplatform/js/admin/subscriptions.js"></script>
 </body>
 </html>

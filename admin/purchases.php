@@ -200,9 +200,12 @@ $page_title = "Gestion des Achats - Syndic Way";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?></title>
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/sections/dashboard.css">
+    <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/dashboard.css">
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
+    <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/purchases.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    
 </head>
 
 <body>
@@ -213,7 +216,7 @@ $page_title = "Gestion des Achats - Syndic Way";
         </div>
         <div class="nav-user">
             <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?></span>
-            <a href="logout.php" class="btn btn-logout">
+            <a href="../public/logout.php" class="btn btn-logout">
                 <i class="fas fa-sign-out-alt"></i> Déconnexion
             </a>
         </div>
@@ -499,22 +502,19 @@ $page_title = "Gestion des Achats - Syndic Way";
        <input type="hidden" name="action" value="refund_purchase">
        <input type="hidden" name="member_id" id="refundMemberId">
    </form>
-   
-
-
 
    <script>
-    // Auto-refresh every 5 minutes for pending purchases
-        setInterval(function () {
-            const pendingCount = <?php echo $pending_count; ?>;
-            if (pendingCount > 0) {
-                // Optional: Show a notification about auto-refresh
-                console.log('Auto-refresh: Checking for new purchases...');
-                // You could implement AJAX refresh here instead of full page reload
-            }
-        }, 300000); // 5 minutes
+       // Auto-refresh every 5 minutes for pending purchases
+       setInterval(function() {
+           const pendingCount = <?php echo $pending_count; ?>;
+           if (pendingCount > 0) {
+               // Optional: Show a notification about auto-refresh
+               console.log('Auto-refresh: Checking for new purchases...');
+               // You could implement AJAX refresh here instead of full page reload
+           }
+       }, 300000); // 5 minutes
    </script>
 
-   <script src="js/sections/dashboard.js"></script>
+   <script src="http://localhost/syndicplatform/js/admin/purchases.js"></script>
 </body>
 </html>

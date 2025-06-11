@@ -4,65 +4,30 @@ require_once __DIR__ . '/../config.php';
 
 // Check if user is logged in and is a syndic
 if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'syndic') {
-    header('Location: ../public/login.php');
+    header('Location: http://localhost/syndicplatform/public/login.php');
     exit();
 }
 
-// Get syndic information and statistics
+// Get syndic information and building statistics
 try {
-    // Get syndic details
+    // Get syndic details with building info
     $stmt = $conn->prepare("
         SELECT m.*, r.name as building_name, r.address, c.city_name,
-               s.name_subscription, s.max_residents, s.max_apartments
+               COUNT(DISTINCT ap2.id_apartment) as total_apartments,
+               COUNT(DISTINCT m2.id_member) as total_residents
         FROM member m
         LEFT JOIN apartment ap ON ap.id_member = m.id_member
         LEFT JOIN residence r ON r.id_residence = ap.id_residence
         LEFT JOIN city c ON c.id_city = r.id_city
-        LEFT JOIN admin_member_subscription ams ON ams.id_member = m.id_member
-        LEFT JOIN subscription s ON s.id_subscription = ams.id_subscription
+        LEFT JOIN apartment ap2 ON ap2.id_residence = r.id_residence
+        LEFT JOIN member m2 ON m2.id_member = ap2.id_member AND m2.role = 1
         WHERE m.id_member = ?
+        GROUP BY m.id_member
     ");
     $stmt->execute([$_SESSION['user_id']]);
     $syndic_info = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Get total residents in this building
-    $stmt = $conn->prepare("
-        SELECT COUNT(*) as total_residents
-        FROM member m
-        JOIN apartment ap ON ap.id_member = m.id_member
-        JOIN residence r ON r.id_residence = ap.id_residence
-        WHERE r.id_residence = (
-            SELECT r2.id_residence 
-            FROM apartment ap2 
-            JOIN residence r2 ON r2.id_residence = ap2.id_residence 
-            WHERE ap2.id_member = ?
-        ) AND m.role = 1
-    ");
-    $stmt->execute([$_SESSION['user_id']]);
-    $total_residents = $stmt->fetch()['total_residents'] ?? 0;
-
-    // Get total apartments in this building
-    $stmt = $conn->prepare("
-        SELECT COUNT(*) as total_apartments
-        FROM apartment ap
-        JOIN residence r ON r.id_residence = ap.id_residence
-        WHERE r.id_residence = (
-            SELECT r2.id_residence 
-            FROM apartment ap2 
-            JOIN residence r2 ON r2.id_residence = ap2.id_residence 
-            WHERE ap2.id_member = ?
-        )
-    ");
-    $stmt->execute([$_SESSION['user_id']]);
-    $total_apartments = $stmt->fetch()['total_apartments'] ?? 0;
-
-    // Get pending maintenance requests (mock data - you can implement this table)
-    $pending_requests = 3; // This would come from a maintenance_requests table
-
-    // Get monthly revenue (from all residents' payments)
-    $monthly_revenue = $total_residents * 500; // Mock calculation
-
-    // Get recent residents
+    // Get recent residents in this building
     $stmt = $conn->prepare("
         SELECT m.full_name, m.email, m.phone, m.date_created, 
                ap.type, ap.floor, ap.number
@@ -81,151 +46,32 @@ try {
     $stmt->execute([$_SESSION['user_id']]);
     $recent_residents = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // Mock data for statistics
+    $pending_requests = 3;
+    $monthly_revenue = ($syndic_info['total_residents'] ?? 0) * 500;
+
 } catch(PDOException $e) {
     error_log($e->getMessage());
-    $_SESSION['error'] = "Une erreur s'est produite lors du chargement des données.";
     $syndic_info = null;
-    $total_residents = 0;
-    $total_apartments = 0;
+    $recent_residents = [];
     $pending_requests = 0;
     $monthly_revenue = 0;
-    $recent_residents = [];
 }
-
-$page_title = "Tableau de bord Syndic - Syndic Way";
 ?>
 
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?></title>
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/sections/dashboard.css">
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-   <?php
-session_start();
-require_once __DIR__ . '/../config.php';
-
-// Check if user is logged in and is a resident
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'resident') {
-    header('Location: ../public/login.php');
-    exit();
-}
-
-// Get resident information and building details
-try {
-    // Get resident details
-    $stmt = $conn->prepare("
-        SELECT m.*, ap.type, ap.floor, ap.number,
-               r.name as building_name, r.address, c.city_name
-        FROM member m
-        JOIN apartment ap ON ap.id_member = m.id_member
-        JOIN residence r ON r.id_residence = ap.id_residence
-        JOIN city c ON c.id_city = r.id_city
-        WHERE m.id_member = ?
-    ");
-    $stmt->execute([$_SESSION['user_id']]);
-    $resident_info = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Get syndic information for this building
-    $stmt = $conn->prepare("
-        SELECT m.full_name as syndic_name, m.email as syndic_email, m.phone as syndic_phone
-        FROM member m
-        JOIN apartment ap ON ap.id_member = m.id_member
-        JOIN residence r ON r.id_residence = ap.id_residence
-        WHERE r.id_residence = ? AND m.role = 2
-        LIMIT 1
-    ");
-    $stmt->execute([$resident_info['id_residence'] ?? 0]);
-    $syndic_info = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    // Get total residents in building
-    $stmt = $conn->prepare("
-        SELECT COUNT(*) as total_residents
-        FROM member m
-        JOIN apartment ap ON ap.id_member = m.id_member
-        WHERE ap.id_residence = ? AND m.role = 1
-    ");
-    $stmt->execute([$resident_info['id_residence'] ?? 0]);
-    $total_residents = $stmt->fetch()['total_residents'] ?? 0;
-
-    // Mock data for various metrics
-    $my_charges = 750; // Monthly charges
-    $payment_status = 'paid'; // paid, pending, overdue
-    $last_payment_date = date('Y-m-d', strtotime('-15 days'));
-    $next_payment_due = date('Y-m-d', strtotime('+15 days'));
-    $pending_requests = 1; // Maintenance requests
-    $unread_announcements = 2;
-
-    // Get recent announcements (mock data)
-    $recent_announcements = [
-        [
-            'id' => 1,
-            'title' => 'Nettoyage des escaliers',
-            'content' => 'Les escaliers seront nettoyés demain de 9h à 12h.',
-            'date_posted' => date('Y-m-d H:i:s', strtotime('-2 days')),
-            'is_read' => false
-        ],
-        [
-            'id' => 2,
-            'title' => 'Assemblée générale',
-            'content' => 'L\'assemblée générale aura lieu le 15 de ce mois.',
-            'date_posted' => date('Y-m-d H:i:s', strtotime('-5 days')),
-            'is_read' => true
-        ]
-    ];
-
-    // Get payment history (mock data)
-    $payment_history = [
-        [
-            'month' => date('M Y', strtotime('-1 month')),
-            'amount' => 750,
-            'status' => 'paid',
-            'payment_date' => date('Y-m-d', strtotime('-45 days'))
-        ],
-        [
-            'month' => date('M Y', strtotime('-2 months')),
-            'amount' => 750,
-            'status' => 'paid',
-            'payment_date' => date('Y-m-d', strtotime('-75 days'))
-        ]
-    ];
-
-} catch(PDOException $e) {
-    error_log($e->getMessage());
-    $_SESSION['error'] = "Une erreur s'est produite lors du chargement des données.";
-    $resident_info = null;
-    $syndic_info = null;
-    $total_residents = 0;
-    $my_charges = 0;
-    $payment_status = 'unknown';
-    $pending_requests = 0;
-    $unread_announcements = 0;
-    $recent_announcements = [];
-    $payment_history = [];
-}
-
-$page_title = "Tableau de bord Résident - Syndic Way";
-?>
-
-<!DOCTYPE html>
-<html lang="fr">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $page_title; ?></title>
+    <title>Syndic Dashboard - Syndic Way</title>
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/sections/dashboard.css">
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        .apartment-info-card {
-            background: linear-gradient(135deg, var(--color-green), #20c997);
+        .building-info-card {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-green));
             color: var(--color-white);
             padding: 2rem;
             border-radius: 15px;
@@ -233,69 +79,28 @@ $page_title = "Tableau de bord Résident - Syndic Way";
             box-shadow: 0 8px 25px rgba(0,0,0,0.1);
         }
 
-        .apartment-info-card h2 {
+        .building-info-card h2 {
             margin: 0 0 1rem 0;
             font-size: 1.8rem;
         }
 
-        .apartment-details {
+        .building-details {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
             margin-top: 1.5rem;
         }
 
-        .apartment-detail {
+        .building-detail {
             background: rgba(255,255,255,0.1);
             padding: 1rem;
             border-radius: 10px;
             backdrop-filter: blur(10px);
         }
 
-        .apartment-detail i {
+        .building-detail i {
             font-size: 1.5rem;
             margin-bottom: 0.5rem;
-        }
-
-        .payment-status-card {
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            border-radius: 10px;
-            border-left: 4px solid;
-        }
-
-        .payment-status-card.paid {
-            background: rgba(40, 167, 69, 0.1);
-            border-color: var(--color-green);
-        }
-
-        .payment-status-card.pending {
-            background: rgba(244, 185, 66, 0.1);
-            border-color: var(--color-yellow);
-        }
-
-        .payment-status-card.overdue {
-            background: rgba(220, 53, 69, 0.1);
-            border-color: #dc3545;
-        }
-
-        .payment-status-card h4 {
-            margin: 0 0 0.5rem 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .payment-status-card.paid h4 {
-            color: var(--color-green);
-        }
-
-        .payment-status-card.pending h4 {
-            color: var(--color-yellow);
-        }
-
-        .payment-status-card.overdue h4 {
-            color: #dc3545;
         }
 
         .quick-actions-grid {
@@ -325,18 +130,18 @@ $page_title = "Tableau de bord Résident - Syndic Way";
             left: 0;
             right: 0;
             height: 4px;
-            background: linear-gradient(135deg, var(--color-green), #20c997);
+            background: linear-gradient(135deg, var(--color-primary), var(--color-green));
         }
 
         .action-card:hover {
             transform: translateY(-5px);
-            border-color: var(--color-green);
+            border-color: var(--color-primary);
             box-shadow: 0 15px 40px rgba(0,0,0,0.15);
         }
 
         .action-card i {
             font-size: 2.5rem;
-            color: var(--color-green);
+            color: var(--color-primary);
             margin-bottom: 1rem;
         }
 
@@ -364,193 +169,59 @@ $page_title = "Tableau de bord Résident - Syndic Way";
             font-weight: bold;
         }
 
-        .two-column-layout {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .announcements-section,
-        .payment-history-section {
+        .residents-table {
             background: var(--color-white);
             border-radius: 15px;
             overflow: hidden;
             box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
         }
 
-        .section-header {
-            background: linear-gradient(135deg, var(--color-green), #20c997);
+        .table-header {
+            background: linear-gradient(135deg, var(--color-primary), var(--color-green));
             color: var(--color-white);
             padding: 1.5rem;
         }
 
-        .section-header h3 {
+        .table-header h3 {
             margin: 0;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
 
-        .announcement-item {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--color-light-grey);
-            position: relative;
+        .residents-list {
+            overflow-x: auto;
         }
 
-        .announcement-item:last-child {
-            border-bottom: none;
+        .residents-list table {
+            width: 100%;
+            border-collapse: collapse;
         }
 
-        .announcement-item.unread {
-            background: rgba(40, 167, 69, 0.05);
-            border-left: 4px solid var(--color-green);
-        }
-
-        .announcement-item.unread::before {
-            content: '';
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            width: 8px;
-            height: 8px;
-            background: var(--color-green);
-            border-radius: 50%;
-        }
-
-        .announcement-title {
-            font-weight: 600;
-            color: var(--color-dark-grey);
-            margin-bottom: 0.5rem;
-        }
-
-        .announcement-content {
-            color: var(--color-grey);
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .announcement-date {
-            color: var(--color-grey);
-            font-size: 0.8rem;
-        }
-
-        .payment-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--color-light-grey);
-        }
-
-       .payment-item:last-child {
-            border-bottom: none;
-        }
-
-        .payment-info {
-            flex: 1;
-        }
-
-        .payment-month {
-            font-weight: 600;
-            color: var(--color-dark-grey);
-            margin-bottom: 0.25rem;
-        }
-
-        .payment-date {
-            color: var(--color-grey);
-            font-size: 0.8rem;
-        }
-
-        .payment-amount {
-            font-weight: 700;
-            color: var(--color-green);
-            font-size: 1.1rem;
-        }
-
-        .payment-badge {
-            padding: 0.3rem 0.8rem;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .payment-paid {
-            background: var(--color-green);
-            color: var(--color-white);
-        }
-
-        .payment-pending {
-            background: var(--color-yellow);
-            color: var(--color-white);
-        }
-
-        .payment-overdue {
-            background: #dc3545;
-            color: var(--color-white);
-        }
-
-        .syndic-contact-card {
-            background: var(--color-white);
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-        }
-
-        .syndic-contact-card h3 {
-            color: var(--color-dark-grey);
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .contact-info {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .contact-detail {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
+        .residents-list th,
+        .residents-list td {
             padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--color-light-grey);
+        }
+
+        .residents-list th {
             background: var(--color-light-grey);
-            border-radius: 10px;
-        }
-
-        .contact-detail i {
-            color: var(--color-green);
-            font-size: 1.2rem;
-        }
-
-        .contact-detail a {
+            font-weight: 600;
             color: var(--color-dark-grey);
-            text-decoration: none;
-            font-weight: 500;
         }
 
-        .contact-detail a:hover {
-            color: var(--color-green);
+        .residents-list tr:hover {
+            background: rgba(0,123,255,0.05);
         }
 
         @media (max-width: 768px) {
-            .apartment-details {
+            .building-details {
                 grid-template-columns: 1fr;
             }
             
             .quick-actions-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .two-column-layout {
-                grid-template-columns: 1fr;
-            }
-            
-            .contact-info {
                 grid-template-columns: 1fr;
             }
         }
@@ -561,11 +232,11 @@ $page_title = "Tableau de bord Résident - Syndic Way";
     <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-brand">
-            <h2><i class="fas fa-home"></i> Espace Résident</h2>
+            <h2><i class="fas fa-building"></i> Espace Syndic</h2>
         </div>
         <div class="nav-user">
-            <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Résident'); ?></span>
-            <a href="../public/logout.php" class="btn btn-logout">
+            <span><i class="fas fa-user-tie"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Syndic'); ?></span>
+            <a href="http://localhost/syndicplatform/public/logout.php" class="btn btn-logout">
                 <i class="fas fa-sign-out-alt"></i> Déconnexion
             </a>
         </div>
@@ -585,8 +256,13 @@ $page_title = "Tableau de bord Résident - Syndic Way";
                         </a>
                     </li>
                     <li>
-                        <a href="payments.php">
-                            <i class="fas fa-credit-card"></i> Mes paiements
+                        <a href="residents.php">
+                            <i class="fas fa-users"></i> Gestion résidents
+                        </a>
+                    </li>
+                    <li>
+                        <a href="apartments.php">
+                            <i class="fas fa-home"></i> Gestion appartements
                         </a>
                     </li>
                     <li>
@@ -598,16 +274,13 @@ $page_title = "Tableau de bord Résident - Syndic Way";
                         </a>
                     </li>
                     <li>
-                        <a href="announcements.php">
-                            <i class="fas fa-bullhorn"></i> Annonces
-                            <?php if($unread_announcements > 0): ?>
-                                <span class="notifications-badge"><?php echo $unread_announcements; ?></span>
-                            <?php endif; ?>
+                        <a href="payments.php">
+                            <i class="fas fa-money-bill-wave"></i> Gestion paiements
                         </a>
                     </li>
                     <li>
-                        <a href="neighbors.php">
-                            <i class="fas fa-users"></i> Voisinage
+                        <a href="announcements.php">
+                            <i class="fas fa-bullhorn"></i> Annonces
                         </a>
                     </li>
                     <li>
@@ -616,8 +289,8 @@ $page_title = "Tableau de bord Résident - Syndic Way";
                         </a>
                     </li>
                     <li>
-                        <a href="contact.php">
-                            <i class="fas fa-envelope"></i> Contact syndic
+                        <a href="reports.php">
+                            <i class="fas fa-chart-bar"></i> Rapports
                         </a>
                     </li>
                     <li>
@@ -631,60 +304,36 @@ $page_title = "Tableau de bord Résident - Syndic Way";
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Apartment Info Card -->
-            <?php if ($resident_info): ?>
-                <div class="apartment-info-card">
-                    <h2>Appartement <?php echo htmlspecialchars($resident_info['number']); ?></h2>
-                    <p><i class="fas fa-building"></i> <?php echo htmlspecialchars($resident_info['building_name'] ?? 'Mon Immeuble'); ?></p>
-                    <p><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($resident_info['address'] ?? ''); ?>, <?php echo htmlspecialchars($resident_info['city_name'] ?? ''); ?></p>
+            <!-- Building Info Card -->
+            <?php if ($syndic_info): ?>
+                <div class="building-info-card">
+                    <h2><i class="fas fa-building"></i> <?php echo htmlspecialchars($syndic_info['building_name'] ?? 'Mon Immeuble'); ?></h2>
+                    <p><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($syndic_info['address'] ?? ''); ?>, <?php echo htmlspecialchars($syndic_info['city_name'] ?? ''); ?></p>
                     
-                    <div class="apartment-details">
-                        <div class="apartment-detail">
-                            <i class="fas fa-home"></i>
-                            <h4>Appartement <?php echo $resident_info['number']; ?></h4>
-                            <p>Étage <?php echo $resident_info['floor']; ?></p>
-                        </div>
-                        <div class="apartment-detail">
-                            <i class="fas fa-door-open"></i>
-                            <h4><?php echo htmlspecialchars($resident_info['type']); ?></h4>
-                            <p>Type d'appartement</p>
-                        </div>
-                        <div class="apartment-detail">
+                    <div class="building-details">
+                        <div class="building-detail">
                             <i class="fas fa-users"></i>
-                            <h4><?php echo $total_residents; ?> résidents</h4>
-                            <p>Dans l'immeuble</p>
+                            <h4><?php echo $syndic_info['total_residents'] ?? 0; ?> résidents</h4>
+                            <p>Résidents actifs</p>
                         </div>
-                        <div class="apartment-detail">
+                        <div class="building-detail">
+                            <i class="fas fa-home"></i>
+                            <h4><?php echo $syndic_info['total_apartments'] ?? 0; ?> appartements</h4>
+                            <p>Total d'appartements</p>
+                        </div>
+                        <div class="building-detail">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <h4><?php echo number_format($monthly_revenue); ?> DH</h4>
+                            <p>Revenus mensuels</p>
+                        </div>
+                        <div class="building-detail">
                             <i class="fas fa-calendar"></i>
-                            <h4><?php echo date('M Y', strtotime($resident_info['date_created'])); ?></h4>
-                            <p>Résident depuis</p>
+                            <h4><?php echo date('M Y', strtotime($syndic_info['date_created'])); ?></h4>
+                            <p>Syndic depuis</p>
                         </div>
                     </div>
                 </div>
             <?php endif; ?>
-
-            <!-- Payment Status -->
-            <div class="payment-status-card <?php echo $payment_status; ?>">
-                <h4>
-                    <?php if ($payment_status === 'paid'): ?>
-                        <i class="fas fa-check-circle"></i> Paiements à jour
-                    <?php elseif ($payment_status === 'pending'): ?>
-                        <i class="fas fa-clock"></i> Paiement en attente
-                    <?php else: ?>
-                        <i class="fas fa-exclamation-triangle"></i> Paiement en retard
-                    <?php endif; ?>
-                </h4>
-                <p>
-                    <?php if ($payment_status === 'paid'): ?>
-                        Votre dernier paiement de <?php echo number_format($my_charges); ?> DH a été effectué le <?php echo date('d/m/Y', strtotime($last_payment_date)); ?>.
-                        Prochain paiement prévu le <?php echo date('d/m/Y', strtotime($next_payment_due)); ?>.
-                    <?php elseif ($payment_status === 'pending'): ?>
-                        Votre paiement de <?php echo number_format($my_charges); ?> DH est attendu avant le <?php echo date('d/m/Y', strtotime($next_payment_due)); ?>.
-                    <?php else: ?>
-                        Votre paiement de <?php echo number_format($my_charges); ?> DH était dû le <?php echo date('d/m/Y', strtotime($next_payment_due)); ?>. Veuillez régulariser votre situation.
-                    <?php endif; ?>
-                </p>
-            </div>
 
             <!-- Alert Messages -->
             <?php if (isset($_SESSION['success'])): ?>
@@ -705,30 +354,21 @@ $page_title = "Tableau de bord Résident - Syndic Way";
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-icon">
-                        <i class="fas fa-money-bill-wave"></i>
+                        <i class="fas fa-users"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Charges mensuelles</h3>
-                        <div class="stat-number"><?php echo number_format($my_charges); ?> DH</div>
+                        <h3>Total Résidents</h3>
+                        <div class="stat-number"><?php echo $syndic_info['total_residents'] ?? 0; ?></div>
                     </div>
                 </div>
 
-                <div class="stat-card <?php echo $payment_status !== 'paid' ? 'pending' : ''; ?>">
+                <div class="stat-card">
                     <div class="stat-icon">
-                        <i class="fas fa-calendar-check"></i>
+                        <i class="fas fa-home"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Statut paiement</h3>
-                        <div class="stat-number">
-                            <?php 
-                                $status_text = [
-                                    'paid' => 'À jour',
-                                    'pending' => 'En attente',
-                                    'overdue' => 'En retard'
-                                ];
-                                echo $status_text[$payment_status] ?? 'Inconnu';
-                            ?>
-                        </div>
+                        <h3>Appartements</h3>
+                        <div class="stat-number"><?php echo $syndic_info['total_apartments'] ?? 0; ?></div>
                     </div>
                 </div>
 
@@ -737,18 +377,18 @@ $page_title = "Tableau de bord Résident - Syndic Way";
                         <i class="fas fa-tools"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Demandes en cours</h3>
+                        <h3>Demandes en attente</h3>
                         <div class="stat-number"><?php echo $pending_requests; ?></div>
                     </div>
                 </div>
 
-                <div class="stat-card <?php echo $unread_announcements > 0 ? 'pending' : ''; ?>">
+                <div class="stat-card">
                     <div class="stat-icon">
-                        <i class="fas fa-bell"></i>
+                        <i class="fas fa-money-bill-wave"></i>
                     </div>
                     <div class="stat-content">
-                        <h3>Nouvelles annonces</h3>
-                        <div class="stat-number"><?php echo $unread_announcements; ?></div>
+                        <h3>Revenus mensuel</h3>
+                        <div class="stat-number"><?php echo number_format($monthly_revenue); ?> DH</div>
                     </div>
                 </div>
             </div>
@@ -757,143 +397,93 @@ $page_title = "Tableau de bord Résident - Syndic Way";
             <div class="content-section">
                 <h2>Actions rapides</h2>
                 <div class="quick-actions-grid">
-                    <a href="payments.php?action=pay" class="action-card">
-                        <i class="fas fa-credit-card"></i>
-                        <h3>Payer mes charges</h3>
-                        <p>Effectuer le paiement de mes charges mensuelles</p>
+                    <a href="residents.php?action=add" class="action-card">
+                        <i class="fas fa-user-plus"></i>
+                        <h3>Ajouter un résident</h3>
+                        <p>Enregistrer un nouveau résident dans l'immeuble</p>
                     </a>
 
-                    <a href="maintenance.php?action=new" class="action-card">
+                    <a href="maintenance.php" class="action-card">
                         <i class="fas fa-wrench"></i>
-                        <h3>Demande de maintenance</h3>
-                        <p>Signaler un problème ou demander une intervention</p>
+                        <h3>Gérer maintenance</h3>
+                        <p>Voir et traiter les demandes de maintenance</p>
+                        <?php if($pending_requests > 0): ?>
+                            <span class="notifications-badge"><?php echo $pending_requests; ?></span>
+                        <?php endif; ?>
                     </a>
 
-                    <a href="contact.php" class="action-card">
-                        <i class="fas fa-envelope"></i>
-                        <h3>Contacter le syndic</h3>
-                        <p>Envoyer un message au syndic de l'immeuble</p>
+                    <a href="payments.php" class="action-card">
+                        <i class="fas fa-credit-card"></i>
+                        <h3>Gestion paiements</h3>
+                        <p>Suivre les paiements et les retards</p>
+                    </a>
+
+                    <a href="announcements.php?action=new" class="action-card">
+                        <i class="fas fa-bullhorn"></i>
+                        <h3>Nouvelle annonce</h3>
+                        <p>Publier une annonce pour tous les résidents</p>
                     </a>
 
                     <a href="documents.php" class="action-card">
-                        <i class="fas fa-download"></i>
-                        <h3>Mes documents</h3>
-                        <p>Télécharger quittances et documents officiels</p>
+                        <i class="fas fa-file-upload"></i>
+                        <h3>Gérer documents</h3>
+                        <p>Télécharger et organiser les documents</p>
                     </a>
 
-                    <a href="neighbors.php" class="action-card">
-                        <i class="fas fa-users"></i>
-                        <h3>Annuaire des voisins</h3>
-                        <p>Consulter les contacts des autres résidents</p>
-                    </a>
-
-                    <a href="profile.php" class="action-card">
-                        <i class="fas fa-user-edit"></i>
-                        <h3>Modifier mon profil</h3>
-                        <p>Mettre à jour mes informations personnelles</p>
+                    <a href="reports.php" class="action-card">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>Générer rapport</h3>
+                        <p>Créer des rapports financiers et de gestion</p>
                     </a>
                 </div>
             </div>
 
-            <!-- Syndic Contact Card -->
-            <?php if ($syndic_info): ?>
-                <div class="syndic-contact-card">
-                    <h3><i class="fas fa-user-tie"></i> Contact de votre syndic</h3>
-                    <div class="contact-info">
-                        <div class="contact-detail">
-                            <i class="fas fa-user"></i>
-                            <span><?php echo htmlspecialchars($syndic_info['syndic_name']); ?></span>
-                        </div>
-                        <div class="contact-detail">
-                            <i class="fas fa-envelope"></i>
-                            <a href="mailto:<?php echo htmlspecialchars($syndic_info['syndic_email']); ?>">
-                                <?php echo htmlspecialchars($syndic_info['syndic_email']); ?>
-                            </a>
-                        </div>
-                        <?php if ($syndic_info['syndic_phone']): ?>
-                            <div class="contact-detail">
-                                <i class="fas fa-phone"></i>
-                                <a href="tel:<?php echo htmlspecialchars($syndic_info['syndic_phone']); ?>">
-                                    <?php echo htmlspecialchars($syndic_info['syndic_phone']); ?>
-                                </a>
-                            </div>
-                        <?php endif; ?>
-                        <div class="contact-detail">
-                            <i class="fas fa-comments"></i>
-                            <a href="contact.php">Envoyer un message</a>
-                        </div>
-                    </div>
+            <!-- Recent Residents Table -->
+            <div class="residents-table">
+                <div class="table-header">
+                    <h3>
+                        <i class="fas fa-users"></i>
+                        Résidents récents
+                    </h3>
                 </div>
-            <?php endif; ?>
 
-            <!-- Two Column Layout: Announcements and Payment History -->
-            <div class="two-column-layout">
-                <!-- Recent Announcements -->
-                <div class="announcements-section">
-                    <div class="section-header">
-                        <h3>
-                            <i class="fas fa-bullhorn"></i>
-                            Dernières annonces
-                        </h3>
-                    </div>
-
-                    <?php if (!empty($recent_announcements)): ?>
-                        <?php foreach ($recent_announcements as $announcement): ?>
-                            <div class="announcement-item <?php echo !$announcement['is_read'] ? 'unread' : ''; ?>">
-                                <div class="announcement-title"><?php echo htmlspecialchars($announcement['title']); ?></div>
-                                <div class="announcement-content"><?php echo htmlspecialchars($announcement['content']); ?></div>
-                                <div class="announcement-date">
-                                    <i class="fas fa-clock"></i> 
-                                    <?php echo date('d/m/Y à H:i', strtotime($announcement['date_posted'])); ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
+                <div class="residents-list">
+                    <?php if (!empty($recent_residents)): ?>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nom complet</th>
+                                    <th>Email</th>
+                                    <th>Téléphone</th>
+                                    <th>Appartement</th>
+                                    <th>Date d'inscription</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($recent_residents as $resident): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($resident['full_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($resident['email']); ?></td>
+                                        <td><?php echo htmlspecialchars($resident['phone'] ?? 'N/A'); ?></td>
+                                        <td>Apt <?php echo htmlspecialchars($resident['number']); ?> - Étage <?php echo $resident['floor']; ?></td>
+                                        <td><?php echo date('d/m/Y', strtotime($resident['date_created'])); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                         <div style="padding: 1rem; text-align: center;">
-                            <a href="announcements.php" class="btn btn-secondary">
-                                <i class="fas fa-eye"></i> Voir toutes les annonces
+                            <a href="residents.php" class="btn btn-primary">
+                                <i class="fas fa-eye"></i> Voir tous les résidents
                             </a>
                         </div>
                     <?php else: ?>
                         <div class="empty-state" style="padding: 2rem; text-align: center;">
-                            <i class="fas fa-bullhorn" style="font-size: 2rem; color: var(--color-grey); margin-bottom: 1rem;"></i>
-                            <h4>Aucune annonce</h4>
-                            <p>Il n'y a pas d'annonces récentes.</p>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <!-- Payment History -->
-                <div class="payment-history-section">
-                    <div class="section-header">
-                        <h3>
-                            <i class="fas fa-history"></i>
-                            Historique des paiements
-                        </h3>
-                    </div>
-
-                    <?php if (!empty($payment_history)): ?>
-                        <?php foreach ($payment_history as $payment): ?>
-                            <div class="payment-item">
-                                <div class="payment-info">
-                                    <div class="payment-month"><?php echo $payment['month']; ?></div>
-                                    <div class="payment-date">Payé le <?php echo date('d/m/Y', strtotime($payment['payment_date'])); ?></div>
-                                </div>
-                                <div class="payment-amount"><?php echo number_format($payment['amount']); ?> DH</div>
-                                <span class="payment-badge payment-<?php echo $payment['status']; ?>">
-                                    <?php echo $payment['status'] === 'paid' ? 'Payé' : 'En attente'; ?>
-                                </span>
-                            </div>
-                        <?php endforeach; ?>
-                        <div style="padding: 1rem; text-align: center;">
-                            <a href="payments.php" class="btn btn-secondary">
-                                <i class="fas fa-eye"></i> Voir tout l'historique
+                            <i class="fas fa-users" style="font-size: 2rem; color: var(--color-grey); margin-bottom: 1rem;"></i>
+                            <h4>Aucun résident</h4>
+                            <p>Il n'y a pas encore de résidents enregistrés.</p>
+                            <a href="residents.php?action=add" class="btn btn-primary">
+                                <i class="fas fa-user-plus"></i> Ajouter le premier résident
                             </a>
-                        </div>
-                    <?php else: ?>
-                        <div class="empty-state" style="padding: 2rem; text-align: center;">
-                            <i class="fas fa-credit-card" style="font-size: 2rem; color: var(--color-grey); margin-bottom: 1rem;"></i>
-                            <h4>Aucun paiement</h4>
-                            <p>Votre historique de paiements apparaîtra ici.</p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -920,25 +510,6 @@ $page_title = "Tableau de bord Résident - Syndic Way";
                     animateCounter(counter, target);
                 }
             });
-
-            // Enhanced card hover effects
-            document.querySelectorAll('.action-card').forEach(card => {
-                card.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-5px) scale(1.02)';
-                });
-                
-                card.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translateY(0) scale(1)';
-                });
-            });
-
-            // Mark announcements as read when clicked
-            document.querySelectorAll('.announcement-item.unread').forEach(item => {
-                item.addEventListener('click', function() {
-                    this.classList.remove('unread');
-                    // Here you would typically send an AJAX request to mark as read
-                });
-            });
         });
 
         function animateCounter(element, target) {
@@ -953,29 +524,29 @@ $page_title = "Tableau de bord Résident - Syndic Way";
                 
                 if (element.textContent.includes('DH')) {
                     element.textContent = Math.floor(current).toLocaleString() + ' DH';
-                } else if (element.textContent.includes('À jour') || element.textContent.includes('En attente') || element.textContent.includes('En retard')) {
-                    // Don't animate status text
-                    return;
                 } else {
                     element.textContent = Math.floor(current);
                 }
             }, 20);
         }
 
-        // Quick payment functionality
-        function quickPay() {
-            if (confirm('Confirmer le paiement de <?php echo number_format($my_charges); ?> DH pour les charges de ce mois ?')) {
-                // Redirect to payment page
-                window.location.href = 'payments.php?action=pay&amount=<?php echo $my_charges; ?>';
-            }
-        }
+        // Enhanced card hover effects
+        document.querySelectorAll('.action-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-5px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
 
-        // Keyboard shortcuts
+        // Keyboard shortcuts for quick actions
         document.addEventListener('keydown', function(event) {
-            // Alt + P for payments
-            if (event.altKey && event.key === 'p') {
+            // Alt + R for residents
+            if (event.altKey && event.key === 'r') {
                 event.preventDefault();
-                window.location.href = 'payments.php';
+                window.location.href = 'residents.php';
             }
             
             // Alt + M for maintenance
@@ -984,50 +555,16 @@ $page_title = "Tableau de bord Résident - Syndic Way";
                 window.location.href = 'maintenance.php';
             }
             
+            // Alt + P for payments
+            if (event.altKey && event.key === 'p') {
+                event.preventDefault();
+                window.location.href = 'payments.php';
+            }
+            
             // Alt + A for announcements
             if (event.altKey && event.key === 'a') {
                 event.preventDefault();
                 window.location.href = 'announcements.php';
-            }
-            
-            // Alt + C for contact
-            if (event.altKey && event.key === 'c') {
-                event.preventDefault();
-                window.location.href = 'contact.php';
-            }
-        });
-
-        // Real-time notifications check
-        function checkNotifications() {
-            // This would check for new announcements, payment due dates, etc.
-            console.log('Checking for new notifications...');
-        }
-
-        // Check every 5 minutes
-        setInterval(checkNotifications, 300000);
-
-        // Progressive enhancement for payment status
-        const paymentStatus = '<?php echo $payment_status; ?>';
-        if (paymentStatus === 'overdue') {
-            // Could show a more prominent notification
-            setTimeout(() => {
-                if (confirm('Votre paiement est en retard. Souhaitez-vous le régler maintenant ?')) {
-                    window.location.href = 'payments.php?action=pay';
-                }
-            }, 2000);
-        }
-
-        // Service worker for offline capabilities
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js')
-                .catch(error => console.log('Service Worker registration failed'));
-        }
-
-        // Performance monitoring
-        window.addEventListener('load', function() {
-            const loadTime = performance.timing.loadEventEnd - performance.timing.navigationStart;
-            if (loadTime > 3000) {
-                console.warn('Dashboard load time:', loadTime + 'ms');
             }
         });
     </script>

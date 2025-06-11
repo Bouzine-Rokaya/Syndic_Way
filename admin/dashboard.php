@@ -2,10 +2,24 @@
 session_start();
 require_once __DIR__ . '/../config.php';
 
-// Check if user is logged in and is an admin
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
-    header('Location: ../public/login.php');
-    exit();
+// Check if includes/auth.php exists, if not, use basic role check
+if (file_exists(__DIR__ . '/../includes/auth.php')) {
+    require_once __DIR__ . '/../includes/auth.php';
+    $auth = new RoleBasedAuth($conn);
+    $auth->requireRole('admin');
+    $current_user = $auth->getCurrentUser();
+} else {
+    // Fallback to basic check if auth.php doesn't exist yet
+    if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
+        header('Location: ../public/login.php');
+        exit();
+    }
+    $current_user = [
+        'id' => $_SESSION['user_id'],
+        'role' => $_SESSION['user_role'],
+        'name' => $_SESSION['user_name'] ?? 'Admin',
+        'email' => $_SESSION['user_email'] ?? ''
+    ];
 }
 
 // Initialize variables
@@ -72,12 +86,11 @@ $page_title = "Admin Dashboard - Syndic Way";
 
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?></title>
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/sections/dashboard.css">
+    <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/dashboard.css">
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -89,8 +102,8 @@ $page_title = "Admin Dashboard - Syndic Way";
             <h2><i class="fas fa-shield-alt"></i> Admin Panel</h2>
         </div>
         <div class="nav-user">
-            <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?></span>
-            <a href="logout.php" class="btn btn-logout">
+            <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($current_user['name']); ?></span>
+            <a href="../public/logout.php" class="btn btn-logout">
                 <i class="fas fa-sign-out-alt"></i> Déconnexion
             </a>
         </div>
@@ -147,7 +160,7 @@ $page_title = "Admin Dashboard - Syndic Way";
         <main class="main-content">
             <div class="content-header">
                 <h1>Tableau de bord administrateur</h1>
-                <p>Bienvenue, <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?>!</p>
+                <p>Bienvenue, <?php echo htmlspecialchars($current_user['name']); ?>!</p>
             </div>
 
             <!-- Alert Messages -->
@@ -301,5 +314,39 @@ $page_title = "Admin Dashboard - Syndic Way";
         </main>
     </div>
 
+    <script>
+        // Auto-hide alerts
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'translateY(-20px)';
+                    setTimeout(() => alert.remove(), 300);
+                }, 5000);
+            });
+
+            // Animate statistics counters
+            document.querySelectorAll('.stat-number').forEach(counter => {
+                const target = parseInt(counter.textContent.replace(/[^0-9]/g, ''));
+                if (!isNaN(target)) {
+                    animateCounter(counter, target);
+                }
+            });
+        });
+
+        function animateCounter(element, target) {
+            let current = 0;
+            const increment = target / 50;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                element.textContent = Math.floor(current);
+            }, 20);
+        }
+    </script>
 </body>
 </html>
