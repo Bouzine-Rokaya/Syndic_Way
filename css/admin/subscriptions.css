@@ -22,7 +22,7 @@
     background: var(--color-white);
     border-radius: 15px;
     padding: 2rem;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
     transition: all 0.4s ease;
     border: 2px solid transparent;
     position: relative;
@@ -41,7 +41,7 @@
 
 .subscription-card:hover {
     transform: translateY(-8px);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
     border-color: var(--color-yellow);
 }
 
@@ -101,13 +101,20 @@
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
     animation: shimmer 3s ease-in-out infinite;
 }
 
 @keyframes shimmer {
-    0%, 100% { transform: translateX(-50%) translateY(-50%); }
-    50% { transform: translateX(-30%) translateY(-30%); }
+
+    0%,
+    100% {
+        transform: translateX(-50%) translateY(-50%);
+    }
+
+    50% {
+        transform: translateX(-30%) translateY(-30%);
+    }
 }
 
 .price-amount {
@@ -191,7 +198,7 @@
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.7);
+    background-color: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(8px);
     animation: fadeIn 0.4s ease;
 }
@@ -201,22 +208,24 @@
 }
 
 @keyframes fadeIn {
-    from { 
+    from {
         opacity: 0;
         backdrop-filter: blur(0px);
     }
-    to { 
+
+    to {
         opacity: 1;
         backdrop-filter: blur(8px);
     }
 }
 
 @keyframes slideInUp {
-    from { 
+    from {
         opacity: 0;
         transform: translateY(50px) scale(0.95);
     }
-    to { 
+
+    to {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
@@ -228,7 +237,7 @@
     border-radius: 20px;
     width: 90%;
     max-width: 650px;
-    box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
     animation: slideInUp 0.4s ease;
     overflow: hidden;
     max-height: 95vh;
@@ -252,7 +261,7 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
 }
 
 .modal-header h2 {
@@ -280,7 +289,7 @@
 }
 
 .close:hover {
-    background-color: rgba(255,255,255,0.2);
+    background-color: rgba(255, 255, 255, 0.2);
     transform: rotate(90deg);
 }
 
@@ -372,7 +381,7 @@
     padding-left: 3rem;
 }
 
-.input-group input:focus + i {
+.input-group input:focus+i {
     color: var(--color-yellow);
 }
 
@@ -460,7 +469,7 @@
     width: 0;
     height: 0;
     border-radius: 50%;
-    background: rgba(255,255,255,0.2);
+    background: rgba(255, 255, 255, 0.2);
     transition: all 0.3s ease;
     transform: translate(-50%, -50%);
 }
@@ -472,7 +481,7 @@
 
 .btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
 .btn-primary {
@@ -505,11 +514,11 @@
     .subscriptions-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .form-row {
         grid-template-columns: 1fr;
     }
-    
+
     .card-actions {
         grid-template-columns: 1fr;
     }
@@ -542,8 +551,13 @@
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Form validation styles */
