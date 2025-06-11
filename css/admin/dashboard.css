@@ -1,15 +1,16 @@
 :root {
     --primary-color: #b1454a;
     --secondary-color: #121212;
-  
-    --color-yellow:#F4B942;
+
+    --color-yellow: #F4B942;
     --color-black: #000000;
     --color-white: #fff;
     --color-dark-grey: #34393d;
     --color-grey: #6c757d;
-    --color-light-grey:#e9ecef;
-    --color-green:#28a745;
-  }
+    --color-light-grey: #e9ecef;
+    --color-green: #28a745;
+}
+
 /* Dashboard Styles */
 
 /* Layout */
@@ -134,7 +135,7 @@
     background: var(--color-white);
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     display: flex;
     align-items: center;
     gap: 1.5rem;
@@ -184,7 +185,7 @@
     background: var(--color-white);
     padding: 2rem;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
     margin-bottom: 2rem;
 }
 
@@ -321,27 +322,27 @@
         transform: translateX(-100%);
         transition: transform 0.3s;
     }
-    
+
     .sidebar.active {
         transform: translateX(0);
     }
-    
+
     .main-content {
         margin-left: 0;
     }
-    
+
     .stats-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .quick-actions {
         grid-template-columns: 1fr;
     }
-    
+
     .navbar {
         padding: 1rem;
     }
-    
+
     .nav-user {
         flex-direction: column;
         gap: 0.5rem;
@@ -385,8 +386,13 @@
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Stats footer */
