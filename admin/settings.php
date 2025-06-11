@@ -688,7 +688,7 @@ $page_title = "Paramètres - Syndic Way";
         </div>
         <div class="nav-user">
             <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?></span>
-            <a href="logout.php" class="btn btn-logout">
+            <a href="../public/logout.php" class="btn btn-logout">
                 <i class="fas fa-sign-out-alt"></i> Déconnexion
             </a>
         </div>

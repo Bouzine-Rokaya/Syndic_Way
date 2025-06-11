@@ -312,8 +312,9 @@ $page_title = "Rapports - Syndic Way";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?></title>
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/sections/dashboard.css">
+    <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/dashboard.css">
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
+    <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/reports.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -327,7 +328,7 @@ $page_title = "Rapports - Syndic Way";
         </div>
         <div class="nav-user">
             <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?></span>
-            <a href="logout.php" class="btn btn-logout">
+            <a href="../public/logout.php" class="btn btn-logout">
                 <i class="fas fa-sign-out-alt"></i> Déconnexion
             </a>
         </div>
@@ -1086,6 +1087,8 @@ $page_title = "Rapports - Syndic Way";
            };
        }
    </script>
+
+   <script src="http://localhost/syndicplatform/js/admin/reports.js"></script>
 
    <?php 
    // Clear report parameters after displaying
