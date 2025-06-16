@@ -1,121 +1,32 @@
-<?php
-// email_config.php - Email configuration and functions
-
-/**
- * Generate a random password with letters, numbers, and symbols
- */
-function generateRandomPassword($length = 12)
-{
-    $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
-    $password = '';
-    $charactersLength = strlen($characters);
-
-    for ($i = 0; $i < $length; $i++) {
-        $password .= $characters[rand(0, $charactersLength - 1)];
-    }
-
-    return $password;
-}
-
-/**
- * Send welcome email with login credentials
- * For local testing, this will save emails to files instead of sending
- */
-function sendPasswordEmail($email, $name, $password, $plan_name)
-{
-    // For local development, save email to file instead of sending
-    if (isLocalEnvironment()) {
-        return saveEmailToFile($email, $name, $password, $plan_name);
-    }
-
-    // Production email sending code
-    $to = $email;
-    $subject = "Bienvenue sur Syndic Way - Vos identifiants de connexion";
-
-    $message = getEmailTemplate($name, $email, $password, $plan_name);
-
-    $headers = "MIME-Version: 1.0" . "\r\n";
-    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-    $headers .= "From: Syndic Way <noreply@syndicway.com>" . "\r\n";
-    $headers .= "Reply-To: support@syndicway.com" . "\r\n";
-
-    return mail($to, $subject, $message, $headers);
-}
-
-/**
- * Check if we're in local development environment
- */
-function isLocalEnvironment()
-{
-    return in_array($_SERVER['HTTP_HOST'], ['localhost', '127.0.0.1', '::1']) ||
-        strpos($_SERVER['HTTP_HOST'], 'localhost:') === 0;
-}
-
-/**
- * Save email to file for local testing
- */
-function saveEmailToFile($email, $name, $password, $plan_name)
-{
-    $emails_dir = __DIR__ . '/emails';
-
-    // Create emails directory if it doesn't exist
-    if (!file_exists($emails_dir)) {
-        mkdir($emails_dir, 0777, true);
-    }
-
-    $filename = $emails_dir . '/email_' . date('Y-m-d_H-i-s') . '_' . str_replace('@', '_at_', $email) . '.html';
-
-    $content = "<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
-    <meta charset=\"UTF-8\">
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
-    <meta charset=\"UTF-8\">
-    <title>Email sent to: {$email}</title>
+
+    <title>Email sent to: safae4g@gmail.com</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
         .email-info { background: #f0f0f0; padding: 15px; margin-bottom: 20px; border-radius: 5px; display:none; }
-        .credentials { background: #e7f3ff; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0;}
+        .credentials { background: #e7f3ff; padding: 15px; border-left: 4px solid #007bff; margin: 20px 0;display:none; }
     </style>
 </head>
 <body>
     <div class='email-info'>
         <h2>Email Details</h2>
-        <p><strong>To:</strong> {$email}</p>
-        <p><strong>Name:</strong> {$name}</p>
-        <p><strong>Plan:</strong> {$plan_name}</p>
-        <p><strong>Sent:</strong> " . date('Y-m-d H:i:s') . "</p>
+        <p><strong>To:</strong> safae4g@gmail.com</p>
+        <p><strong>Name:</strong> safae 45</p>
+        <p><strong>Plan:</strong> Forfait Entreprise</p>
+        <p><strong>Sent:</strong> 2025-06-16 13:10:26</p>
     </div>
     
     <div class='credentials'>
         <h3>Login Credentials</h3>
-        <p><strong>Email:</strong> {$email}</p>
-        <p><strong>Password:</strong> <code style='background: #f8f9fa; padding: 5px 8px; border-radius: 3px;'>{$password}</code></p>
+        <p><strong>Email:</strong> safae4g@gmail.com</p>
+        <p><strong>Password:</strong> <code style='background: #f8f9fa; padding: 5px 8px; border-radius: 3px;'>g[,TZy+g]42C</code></p>
     </div>
     
     <hr>
     
-    " . getEmailTemplate($name, $email, $password, $plan_name) . "
-</body>
-</html>";
-
-    $result = file_put_contents($filename, $content);
-
-    if ($result !== false) {
-        // Log success
-        error_log("LOCAL EMAIL: Saved to file {$filename} for {$email} with password: {$password}");
-        return true;
-    }
-
-    return false;
-}
-
-/**
- * Get HTML email template
- */
-function getEmailTemplate($name, $email, $password, $plan_name)
-{
-    return "
+    
     <!DOCTYPE html>
     <html>
     <head>
@@ -221,14 +132,14 @@ function getEmailTemplate($name, $email, $password, $plan_name)
             </div>
             
             <div class='content'>
-                <h2 style='color: #FFCB32; margin-top: 0;'>Bonjour " . htmlspecialchars($name) . ",</h2>
+                <h2 style='color: #FFCB32; margin-top: 0;'>Bonjour safae 45,</h2>
                 
-                <p style='font-size: 16px;'>Félicitations ! Votre abonnement <strong>" . htmlspecialchars($plan_name) . "</strong> a été activé avec succès.</p>
+                <p style='font-size: 16px;'>Félicitations ! Votre abonnement <strong>Forfait Entreprise</strong> a été activé avec succès.</p>
                 
                 <div class='credentials'>
                     <h3>Vos identifiants de connexion :</h3>
-                    <p><strong>Email :</strong> " . htmlspecialchars($email) . "</p>
-                    <p><strong>Mot de passe :</strong> <span class='password-box'>" . htmlspecialchars($password) . "</span></p>
+                    <p><strong>Email :</strong> safae4g@gmail.com</p>
+                    <p><strong>Mot de passe :</strong> <span class='password-box'>g[,TZy+g]42C</span></p>
                 </div>
                 
                 <div class='warning'>
@@ -269,87 +180,13 @@ function getEmailTemplate($name, $email, $password, $plan_name)
             </div>
             
             <div class='footer'>
-                <p style='margin: 0;'><strong>© " . date('Y') . " Syndic Way - Tous droits réservés</strong></p>
+                <p style='margin: 0;'><strong>© 2025 Syndic Way - Tous droits réservés</strong></p>
                 <p style='margin: 5px 0 0 0; font-size: 12px;'>Cet email a été envoyé automatiquement, merci de ne pas y répondre directement.</p>
                 <p style='margin: 5px 0 0 0; font-size: 12px;'>Pour toute question, contactez-nous à support@syndicway.com</p>
             </div>
         </div>
     </body>
     </html>
-    ";
-}
-
-/**
- * Send email notification to admin about new subscription
- */
-function notifyAdminNewSubscription($member_name, $member_email, $plan_name, $amount)
-{
-    if (isLocalEnvironment()) {
-        // For local development, just log it
-        error_log("ADMIN NOTIFICATION: New subscription - {$member_name} ({$member_email}) - {$plan_name} - {$amount} DH");
-        return true;
-    }
-
-    $to = "admin@syndicway.com"; // Change this to your admin email
-    $subject = "Nouvel abonnement Syndic Way - " . $member_name;
-
-    $message = "
-    <h2>Nouvel abonnement activé</h2>
-    <p><strong>Client :</strong> " . htmlspecialchars($member_name) . "</p>
-    <p><strong>Email :</strong> " . htmlspecialchars($member_email) . "</p>
-    <p><strong>Forfait :</strong> " . htmlspecialchars($plan_name) . "</p>
-    <p><strong>Montant :</strong> " . number_format($amount, 2) . " DH</p>
-    <p><strong>Date :</strong> " . date('Y-m-d H:i:s') . "</p>
-    ";
-
-    $headers = "MIME-Version: 1.0" . "\r\n";
-    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-    $headers .= "From: Syndic Way System <system@syndicway.com>" . "\r\n";
-
-    return mail($to, $subject, $message, $headers);
-}
-
-/**
- * Log email activities
- */
-function logEmailActivity($email, $type, $status)
-{
-    $logs_dir = __DIR__ . '/logs';
-    if (!file_exists($logs_dir)) {
-        mkdir($logs_dir, 0777, true);
-    }
-
-    $log_message = date('Y-m-d H:i:s') . " - Email: {$email}, Type: {$type}, Status: {$status}\n";
-    error_log($log_message, 3, $logs_dir . '/email.log');
-}
-
-/**
- * Get list of saved email files for viewing
- */
-function getSavedEmails()
-{
-    $emails_dir = __DIR__ . '/emails';
-    if (!file_exists($emails_dir)) {
-        return [];
-    }
-
-    $files = glob($emails_dir . '/email_*.html');
-    $emails = [];
-
-    foreach ($files as $file) {
-        $emails[] = [
-            'filename' => basename($file),
-            'filepath' => $file,
-            'date' => date('Y-m-d H:i:s', filemtime($file)),
-            'size' => filesize($file)
-        ];
-    }
-
-    // Sort by date, newest first
-    usort($emails, function ($a, $b) {
-        return filemtime($b['filepath']) - filemtime($a['filepath']);
-    });
-
-    return $emails;
-}
-?>
+    
+</body>
+</html>
