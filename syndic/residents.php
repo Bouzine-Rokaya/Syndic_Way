@@ -87,9 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $conn->prepare("
                 SELECT r.id_residence, r.name as building_name
                 FROM residence r
-                LIMIT 1
+                WHERE id_syndic = ?
             ");
-            $stmt->execute();
+            $stmt->execute([$current_user['id']]);
             $building = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$building) {
