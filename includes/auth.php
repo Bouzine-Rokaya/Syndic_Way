@@ -1,93 +1,99 @@
 <?php
 // File: includes/auth.php
-class RoleBasedAuth {
-    private $conn;
-    private $current_user;
-    
-    public function __construct($database_connection) {
-        $this->conn = $database_connection;
+
+/**
+ * Check if user is logged in and get their role
+ */
+function checkAuth() {
+    if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
+        redirectToLogin();
+        return false;
     }
     
-    /**
-     * Check if user is logged in and get their role
-     */
-    public function checkAuth() {
-        if (!isset($_SESSION['user_id']) || !isset($_SESSION['user_role'])) {
-            $this->redirectToLogin();
-            return false;
-        }
-        
-        $this->current_user = [
-            'id' => $_SESSION['user_id'],
-            'role' => $_SESSION['user_role'],
-            'name' => $_SESSION['user_name'] ?? '',
-            'email' => $_SESSION['user_email'] ?? ''
-        ];
-        
-        return true;
+    return true;
+}
+
+/**
+ * Get current user information
+ */
+function getCurrentUser() {
+    if (!checkAuth()) {
+        return null;
     }
     
-    /**
-     * Check if user has required permission
-     */
-    public function hasPermission($required_role) {
-        if (!$this->current_user) {
-            return false;
-        }
-        
-        $role_hierarchy = [
-            'admin' => 3,
-            'syndic' => 2,
-            'resident' => 1
-        ];
-        
-        $user_level = $role_hierarchy[$this->current_user['role']] ?? 0;
-        $required_level = $role_hierarchy[$required_role] ?? 0;
-        
-        return $user_level >= $required_level;
+    return [
+        'id' => $_SESSION['user_id'],
+        'role' => $_SESSION['user_role'],
+        'name' => $_SESSION['user_name'] ?? '',
+        'email' => $_SESSION['user_email'] ?? ''
+    ];
+}
+
+/**
+ * Check if user has required permission
+ */
+function hasPermission($required_role) {
+    $current_user = getCurrentUser();
+    
+    if (!$current_user) {
+        return false;
     }
     
-    /**
-     * Require specific role or redirect
-     */
-    public function requireRole($required_role) {
-        if (!$this->checkAuth() || !$this->hasPermission($required_role)) {
-            $this->redirectToLogin();
-            exit();
-        }
-    }
+    $role_hierarchy = [
+        'admin' => 3,
+        'syndic' => 2,
+        'resident' => 1
+    ];
     
-    /**
-     * Get user information
-     */
-    public function getCurrentUser() {
-        return $this->current_user;
-    }
+    $user_level = $role_hierarchy[$current_user['role']] ?? 0;
+    $required_level = $role_hierarchy[$required_role] ?? 0;
     
-    /**
-     * Redirect to appropriate dashboard based on role
-     */
-    public function redirectToDashboard() {
-        $role = $this->current_user['role'];
-        
-        switch ($role) {
-            case 'admin':
-                header('Location: http://localhost/syndicplatform/admin/dashboard.php');
-                break;
-            case 'syndic':
-                header('Location: http://localhost/syndicplatform/syndic/dashboard.php');
-                break;
-            case 'resident':
-                header('Location: http://localhost/syndicplatform/resident/dashboard.php');
-                break;
-            default:
-                header('Location: http://localhost/syndicplatform/public/login.php');
-        }
+    return $user_level >= $required_level;
+}
+
+/**
+ * Require specific role or redirect
+ */
+function requireRole($required_role) {
+    if (!checkAuth() || !hasPermission($required_role)) {
+        redirectToLogin();
         exit();
     }
+}
+
+/**
+ * Redirect to appropriate dashboard based on role
+ */
+function redirectToDashboard() {
+    $current_user = getCurrentUser();
     
-    private function redirectToLogin() {
-        header('Location: http://localhost/syndicplatform/public/login.php');
-        exit();
+    if (!$current_user) {
+        redirectToLogin();
+        return;
     }
+    
+    $role = $current_user['role'];
+    
+    switch ($role) {
+        case 'admin':
+            header('Location: http://localhost/syndicplatform/admin/dashboard.php');
+            break;
+        case 'syndic':
+            header('Location: http://localhost/syndicplatform/syndic/dashboard.php');
+            break;
+        case 'resident':
+            header('Location: http://localhost/syndicplatform/resident/dashboard.php');
+            break;
+        default:
+            header('Location: http://localhost/syndicplatform/public/login.php');
+    }
+    exit();
+}
+
+/**
+ * Redirect to login page
+ */
+function redirectToLogin() {
+    header('Location: http://localhost/syndicplatform/public/login.php');
+    exit();
 }

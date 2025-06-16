@@ -1,7 +1,6 @@
 <?php
 session_start();
 require __DIR__ . '/../config.php';
-require __DIR__ . '/../controllers/AuthController.php';
 require_once __DIR__ . '/../email_config.php';
 
 $page_title = "Complete Your Purchase - Syndic Way";
@@ -151,21 +150,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="landing-nav">
-        <div class="container">
-            <div class="nav-brand">
-                <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/syndic-way-3l3Tx2e1PrjISxRnMx9Sk4ut1e4AQ1.png" alt="Syndic-Way" class="logo-img">
-            </div>
-            <div class="nav-links">
-                <a href="?page=home">Accueil</a>
-                <a href="?page=subscriptions">Tarification</a>
-                <a href="#">À propos</a>
-                <a href="#">Nos services</a>
-                <a href="#">Contact</a>
-            </div>
-            <a href="login.php" class="btn-login">Connexion</a>
-        </div>
-    </nav>
+    <?php require_once __DIR__ . '/../public/header.php'; ?>
+
 
     <!-- Purchase Form Section -->
     <section class="purchase-form">
@@ -226,20 +212,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="syndic_name">Nom complet *</label>
+                                    <label for="syndic_name">Nom complet </label>
                                     <input type="text" id="syndic_name" name="syndic_name" 
                                            value="<?php echo htmlspecialchars($_POST['syndic_name'] ?? ''); ?>" required>
                                 </div>
                                 
                                 <div class="form-group">
-                                    <label for="syndic_email">Adresse e-mail *</label>
+                                    <label for="syndic_email">Adresse e-mail </label>
                                     <input type="email" id="syndic_email" name="syndic_email" 
                                            value="<?php echo htmlspecialchars($_POST['syndic_email'] ?? ''); ?>" required>
                                 </div>
                             </div>
 
                             <div class="form-group">
-                                <label for="syndic_phone">Numéro de téléphone *</label>
+                                <label for="syndic_phone">Numéro de téléphone </label>
                                 <input type="tel" id="syndic_phone" name="syndic_phone" 
                                        value="<?php echo htmlspecialchars($_POST['syndic_phone'] ?? ''); ?>" required>
                             </div>
@@ -249,13 +235,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
 
                             <div class="form-group">
-                                <label for="company_name">Nom de l'entreprise / du bâtiment *</label>
+                                <label for="company_name">Nom de l'entreprise / du bâtiment </label>
                                 <input type="text" id="company_name" name="company_name" 
                                        value="<?php echo htmlspecialchars($_POST['company_name'] ?? ''); ?>" required>
                             </div>
 
                             <div class="form-group">
-                                <label for="company_city">Ville *</label>
+                                <label for="company_city">Ville </label>
                                 <input type="text" id="company_city" name="company_city" 
                                        value="<?php echo htmlspecialchars($_POST['company_city'] ?? ''); ?>" required>
                             </div>
@@ -303,58 +289,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </section>
 
-    <!-- Security & Trust Section -->
-    <section class="trust-section">
-        <div class="container">
-            <div class="trust-items">
-                <div class="trust-item">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>Secure Payment</span>
-                </div>
-                <div class="trust-item">
-                    <i class="fas fa-clock"></i>
-                    <span>24/7 Support</span>
-                </div>
-                <div class="trust-item">
-                    <i class="fas fa-undo"></i>
-                    <span>30-Day Money Back</span>
-                </div>
-            </div>
-        </div>
-    </section>
-                    
+              
     <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3></h3>
-                    <p>Solution moderne de gestion de syndic pour l'ère numérique.</p>
-                </div>
-                <div class="footer-section">
-                    <h4>Fonctionnalités</h4>
-                    <ul>
-                        <li><a href="#">Gestion des résidents</a></li>
-                        <li><a href="#">Suivi de la maintenance</a></li>
-                        <li><a href="#">Système de facturation</a></li>
-                        <li><a href="#">Rapports</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Support</h4>
-                    <ul>
-                        <li><a href="#">Centre d'aide</a></li>
-                        <li><a href="#">Contactez-nous</a></li>
-                        <li><a href="#">Documentation</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p> <?php echo date('Y'); ?> Syndic Way . Tous droits réservés.</p>
-            </div>
-        </div>
-    </footer>
+    <?php require_once __DIR__ . '/../public/footer.php'; ?>
 
-    <script src="js/sections/subscriptions.js"></script>
+
+    <script src="http://localhost/syndicplatform/js/sections/subscriptions.js"></script>
 </body>
 </html>

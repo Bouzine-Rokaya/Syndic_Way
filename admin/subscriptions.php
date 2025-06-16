@@ -1,12 +1,8 @@
 <?php
 session_start();
 require_once __DIR__ . '/../config.php';
-
-// Check if user is logged in and is an admin
-if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
-    header('Location: ../public/login.php');
-    exit();
-}
+require_once __DIR__ . '/../includes/auth.php';
+$current_user = getCurrentUser();
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -20,6 +16,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $duration = intval($_POST['duration_months']);
             $max_residents = intval($_POST['max_residents']);
             $max_apartments = intval($_POST['max_apartments']);
+
+            // Validation
+            if (empty($name) || $price <= 0 || $duration <= 0 || $max_residents <= 0 || $max_apartments <= 0) {
+                throw new Exception("Tous les champs obligatoires doivent être remplis avec des valeurs valides.");
+            }
 
             $stmt = $conn->prepare("
                 INSERT INTO subscription 
@@ -38,6 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $duration = intval($_POST['duration_months']);
             $max_residents = intval($_POST['max_residents']);
             $max_apartments = intval($_POST['max_apartments']);
+
+            // Validation
+            if (empty($name) || $price <= 0 || $duration <= 0 || $max_residents <= 0 || $max_apartments <= 0) {
+                throw new Exception("Tous les champs obligatoires doivent être remplis avec des valeurs valides.");
+            }
 
             $stmt = $conn->prepare("
                 UPDATE subscription 
@@ -62,7 +68,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $stmt = $conn->prepare("DELETE FROM subscription WHERE id_subscription = ?");
                 $stmt->execute([$id]);
-                $_SESSION['success'] = "Abonnement supprimé avec succès.";
             }
             
         } elseif ($action === 'toggle_status') {
@@ -84,8 +89,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// Get all subscriptions
+// Get subscription statistics
+$subscription_stats = [
+    'total' => 0,
+    'active' => 0,
+    'inactive' => 0,
+    'total_subscribers' => 0
+];
+
 try {
+    // Total subscriptions
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM subscription");
+    $stmt->execute();
+    $subscription_stats['total'] = $stmt->fetch()['count'];
+    
+    // Active subscriptions
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM subscription WHERE is_active = 1");
+    $stmt->execute();
+    $subscription_stats['active'] = $stmt->fetch()['count'];
+    
+    // Inactive subscriptions
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM subscription WHERE is_active = 0");
+    $stmt->execute();
+    $subscription_stats['inactive'] = $stmt->fetch()['count'];
+    
+    // Total subscribers
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM admin_member_subscription");
+    $stmt->execute();
+    $subscription_stats['total_subscribers'] = $stmt->fetch()['count'];
+
+    // Get all subscriptions with subscriber count
     $stmt = $conn->prepare("
         SELECT s.*, 
                COUNT(ams.id_subscription) as total_subscribers
@@ -111,72 +144,38 @@ $page_title = "Gestion des Abonnements - Syndic Way";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?></title>
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/sections/dashboard.css">
+    <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/dashboard.css">
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
     <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/subscriptions.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-brand">
-            <h2><i class="fas fa-shield-alt"></i> Admin Panel</h2>
-        </div>
-        <div class="nav-user">
-            <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?></span>
-            <a href="../public/logout.php" class="btn btn-logout">
-                <i class="fas fa-sign-out-alt"></i> Déconnexion
-            </a>
-        </div>
-    </nav>
-
-    <div class="dashboard-container">
+   <div class="container">
         <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h3>Navigation</h3>
-            </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    <li>
-                        <a href="dashboard.php">
-                            <i class="fas fa-tachometer-alt"></i> Tableau de bord
-                        </a>
-                    </li>
-                    <li class="active">
-                        <a href="subscriptions.php">
-                            <i class="fas fa-tags"></i> Abonnements
-                        </a>
-                    </li>
-                    <li>
-                        <a href="syndic-accounts.php">
-                            <i class="fas fa-building"></i> Comptes Syndic
-                        </a>
-                    </li>
-                    <li>
-                        <a href="users.php">
-                            <i class="fas fa-users"></i> Utilisateurs
-                        </a>
-                    </li>
-                    <li>
-                        <a href="purchases.php">
-                            <i class="fas fa-shopping-cart"></i> Achats
-                        </a>
-                    </li>
-                    <li>
-                        <a href="reports.php">
-                            <i class="fas fa-chart-bar"></i> Rapports
-                        </a>
-                    </li>
-                    <li>
-                        <a href="settings.php">
-                            <i class="fas fa-cog"></i> Paramètres
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </aside>
+        <?php require_once __DIR__ ."/../includes/sidebar_admin.php"?>
+
+
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Alert Messages -->
+             <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Header -->
+            <?php require_once __DIR__ ."/../includes/navigation.php"?>
 
         <!-- Main Content -->
         <main class="main-content">
@@ -190,20 +189,50 @@ $page_title = "Gestion des Abonnements - Syndic Way";
                 </button>
             </div>
 
-            <!-- Alert Messages -->
-            <?php if (isset($_SESSION['success'])): ?>
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle"></i>
-                    <?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
-                </div>
-            <?php endif; ?>
+           
 
-            <?php if (isset($_SESSION['error'])): ?>
-                <div class="alert alert-error">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+            <!-- Stats Cards -->
+            <div class="stats-grid" style="margin-bottom: 2rem;">
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-tags"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>Total Forfaits</h3>
+                        <div class="stat-number"><?php echo $subscription_stats['total']; ?></div>
+                    </div>
                 </div>
-            <?php endif; ?>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>Forfaits Actifs</h3>
+                        <div class="stat-number"><?php echo $subscription_stats['active']; ?></div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-pause-circle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>Forfaits Inactifs</h3>
+                        <div class="stat-number"><?php echo $subscription_stats['inactive']; ?></div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>Total Abonnés</h3>
+                        <div class="stat-number"><?php echo $subscription_stats['total_subscribers']; ?></div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Subscriptions Grid -->
             <div class="subscriptions-grid">
@@ -228,18 +257,18 @@ $page_title = "Gestion des Abonnements - Syndic Way";
                         </div>
 
                         <div class="card-description">
-                            <p><?php echo htmlspecialchars($subscription['description']); ?></p>
+                            <p><?php echo htmlspecialchars($subscription['description'] ?: 'Aucune description'); ?></p>
                         </div>
 
                         <div class="card-features">
                             <ul>
                                 <li>
                                     <i class="fas fa-users"></i> 
-                                    Jusqu'à <?php echo $subscription['max_residents']; ?> résidents
+                                    Jusqu'à <?php echo number_format($subscription['max_residents']); ?> résidents
                                 </li>
                                 <li>
                                     <i class="fas fa-building"></i> 
-                                    Jusqu'à <?php echo $subscription['max_apartments']; ?> appartements
+                                    Jusqu'à <?php echo number_format($subscription['max_apartments']); ?> appartements
                                 </li>
                                 <li>
                                     <i class="fas fa-calendar"></i> 
@@ -272,8 +301,8 @@ $page_title = "Gestion des Abonnements - Syndic Way";
             </div>
 
             <?php if (empty($subscriptions)): ?>
-                <div class="empty-state">
-                    <i class="fas fa-tags"></i>
+                <div class="empty-state" style="padding: 3rem; text-align: center;">
+                    <i class="fas fa-tags" style="font-size: 3rem; color: var(--color-grey); margin-bottom: 1rem;"></i>
                     <h3>Aucun abonnement trouvé</h3>
                     <p>Commencez par créer votre premier forfait d'abonnement.</p>
                     <button class="btn btn-primary" onclick="openModal('create')">
@@ -310,22 +339,16 @@ $page_title = "Gestion des Abonnements - Syndic Way";
                             <label for="name_subscription">
                                 Nom du forfait <span class="required">*</span>
                             </label>
-                            <div class="input-group">
-                                <input type="text" name="name_subscription" id="name_subscription" 
-                                       placeholder="Ex: Forfait Premium" required>
-                                <i class="fas fa-tag"></i>
-                            </div>
+                            <input type="text" name="name_subscription" id="name_subscription" 
+                                   placeholder="Ex: Forfait Premium" required>
                         </div>
                         
                         <div class="form-group">
                             <label for="price_subscription">
                                 Prix mensuel (DH) <span class="required">*</span>
                             </label>
-                            <div class="input-group">
-                                <input type="number" name="price_subscription" id="price_subscription" 
-                                       step="0.01" min="0" placeholder="299.00" required>
-                                <i class="fas fa-dollar-sign"></i>
-                            </div>
+                            <input type="number" name="price_subscription" id="price_subscription" 
+                                   step="0.01" min="0.01" placeholder="299.00" required>
                         </div>
                     </div>
 
@@ -349,22 +372,16 @@ $page_title = "Gestion des Abonnements - Syndic Way";
                            <label for="duration_months">
                                Durée (mois) <span class="required">*</span>
                            </label>
-                           <div class="input-group">
-                               <input type="number" name="duration_months" id="duration_months" 
-                                      value="12" min="1" max="60" required>
-                               <i class="fas fa-calendar"></i>
-                           </div>
+                           <input type="number" name="duration_months" id="duration_months" 
+                                  value="12" min="1" max="60" required>
                        </div>
                        
                        <div class="form-group">
                            <label for="max_residents">
                                Max résidents <span class="required">*</span>
                            </label>
-                           <div class="input-group">
-                               <input type="number" name="max_residents" id="max_residents" 
-                                      min="1" max="10000" placeholder="100" required>
-                               <i class="fas fa-users"></i>
-                           </div>
+                           <input type="number" name="max_residents" id="max_residents" 
+                                  min="1" max="10000" placeholder="100" required>
                        </div>
                    </div>
 
@@ -372,11 +389,8 @@ $page_title = "Gestion des Abonnements - Syndic Way";
                        <label for="max_apartments">
                            Max appartements <span class="required">*</span>
                        </label>
-                       <div class="input-group">
-                           <input type="number" name="max_apartments" id="max_apartments" 
-                                  min="1" max="1000" placeholder="50" required>
-                           <i class="fas fa-building"></i>
-                       </div>
+                       <input type="number" name="max_apartments" id="max_apartments" 
+                              min="1" max="1000" placeholder="50" required>
                    </div>
                </div>
 
@@ -432,8 +446,6 @@ $page_title = "Gestion des Abonnements - Syndic Way";
        <input type="hidden" name="new_status" id="toggleNewStatus">
    </form>
 
-
    <script src="http://localhost/syndicplatform/js/admin/subscriptions.js"></script>
-
 </body>
 </html>

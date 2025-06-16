@@ -65,33 +65,6 @@ if (!$purchase) {
                 <p class="success-message">Merci d'avoir choisi Syndic Way. Votre abonnement a été activé avec succès.
                 </p>
 
-                <!-- TESTING: Display login credentials -->
-                <?php if (isset($_SESSION['temp_password'])): ?>
-                    <div
-                        style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                        <h3 style="margin-top: 0; color: #155724;"><i class="fas fa-key"></i> Vos identifiants de connexion
-                        </h3>
-                        <p><strong>Nom :</strong> <?php echo htmlspecialchars($_SESSION['temp_name']); ?></p>
-                        <p><strong>Email :</strong> <?php echo htmlspecialchars($_SESSION['temp_email']); ?></p>
-                        <p><strong>Mot de passe :</strong> <code
-                                style="background: #f8f9fa; padding: 5px 8px; border-radius: 3px; font-family: monospace; font-size: 14px;"><?php echo htmlspecialchars($_SESSION['temp_password']); ?></code>
-                        </p>
-                        <p style="margin-bottom: 0;"><small><i class="fas fa-info-circle"></i> Gardez ces informations en
-                                sécurité. Un email a également été envoyé.</small></p>
-                        <div style="text-align: center; margin-top: 15px;">
-                            <a href="login.php" class="btn btn-primary"
-                                style="text-decoration: none; background: #155724; color: white; padding: 10px 20px; border-radius: 5px; display: inline-block;">
-                                <i class="fas fa-sign-in-alt"></i> Se connecter maintenant
-                            </a>
-                        </div>
-                    </div>
-                    <?php
-                    // Clear the temporary data after displaying
-                    unset($_SESSION['temp_password']);
-                    unset($_SESSION['temp_email']);
-                    unset($_SESSION['temp_name']);
-                endif;
-                ?>
 
                 <div class="purchase-details">
                     <h3>Détails de l'achat</h3>
@@ -146,7 +119,6 @@ if (!$purchase) {
                 </div>
 
                 <div class="action-buttons">
-                    <a href="login.php" class="btn btn-primary">Se connecter</a>
                     <a href="index.php" class="btn btn-secondary">Retour à l'accueil</a>
                     <a href="mailto:support@syndicate.com" class="btn btn-secondary">Contacter le support</a>
                 </div>

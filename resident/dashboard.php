@@ -4,9 +4,16 @@ require_once __DIR__ . '/../config.php';
 
 // Check if user is logged in and is a resident
 if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'resident') {
-    header('Location: http://localhost/syndicplatform/public/login.php');
+    header('Location: ../public/login.php');
     exit();
 }
+
+$current_user = [
+    'id' => $_SESSION['user_id'],
+    'role' => $_SESSION['user_role'],
+    'name' => $_SESSION['user_name'] ?? 'Résident',
+    'email' => $_SESSION['user_email'] ?? ''
+];
 
 // Get resident information and building details
 try {
@@ -29,8 +36,7 @@ try {
         SELECT m.full_name as syndic_name, m.email as syndic_email, m.phone as syndic_phone
         FROM member m
         JOIN apartment ap ON ap.id_member = m.id_member
-        JOIN residence r ON r.id_residence = ap.id_residence
-        WHERE r.id_residence = ? AND m.role = 2
+        WHERE ap.id_residence = ? AND m.role = 2
         LIMIT 1
     ");
     $stmt->execute([$resident_info['id_residence'] ?? 0]);
@@ -41,65 +47,112 @@ try {
         SELECT COUNT(*) as total_residents
         FROM member m
         JOIN apartment ap ON ap.id_member = m.id_member
-        WHERE ap.id_residence = ? AND m.role = 1
+        WHERE ap.id_residence = ?
     ");
     $stmt->execute([$resident_info['id_residence'] ?? 0]);
     $total_residents = $stmt->fetch()['total_residents'] ?? 0;
 
-    // Mock data for various metrics
-    $my_charges = 750; // Monthly charges
-    $payment_status = 'paid'; // paid, pending, overdue
-    $last_payment_date = date('Y-m-d', strtotime('-15 days'));
-    $next_payment_due = date('Y-m-d', strtotime('+15 days'));
-    $pending_requests = 1; // Maintenance requests
-    $unread_announcements = 2;
+    // Get apartment count in building
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) as total_apartments
+        FROM apartment
+        WHERE id_residence = ?
+    ");
+    $stmt->execute([$resident_info['id_residence'] ?? 0]);
+    $total_apartments = $stmt->fetch()['total_apartments'] ?? 0;
 
-    // Get recent announcements (mock data)
-    $recent_announcements = [
-        [
-            'id' => 1,
-            'title' => 'Nettoyage des escaliers',
-            'content' => 'Les escaliers seront nettoyés demain de 9h à 12h.',
-            'date_posted' => date('Y-m-d H:i:s', strtotime('-2 days')),
-            'is_read' => false
-        ],
-        [
-            'id' => 2,
-            'title' => 'Assemblée générale',
-            'content' => 'L\'assemblée générale aura lieu le 15 de ce mois.',
-            'date_posted' => date('Y-m-d H:i:s', strtotime('-5 days')),
-            'is_read' => true
-        ]
-    ];
+    // Get subscription info
+    $stmt = $conn->prepare("
+        SELECT s.name_subscription, s.price_subscription, s.description
+        FROM subscription s
+        JOIN admin_member_subscription ams ON ams.id_subscription = s.id_subscription
+        WHERE ams.id_member = ?
+        ORDER BY ams.date_payment DESC
+        LIMIT 1
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $subscription_info = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Get payment history (mock data)
-    $payment_history = [
-        [
-            'month' => date('M Y', strtotime('-1 month')),
-            'amount' => 750,
-            'status' => 'paid',
-            'payment_date' => date('Y-m-d', strtotime('-45 days'))
-        ],
-        [
-            'month' => date('M Y', strtotime('-2 months')),
-            'amount' => 750,
-            'status' => 'paid',
-            'payment_date' => date('Y-m-d', strtotime('-75 days'))
-        ]
+    // Get recent payments
+    $stmt = $conn->prepare("
+        SELECT mp.*, receiver.full_name as receiver_name
+        FROM member_payments mp
+        JOIN member receiver ON receiver.id_member = mp.id_receiver
+        WHERE mp.id_payer = ?
+        ORDER BY mp.date_payment DESC
+        LIMIT 5
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $recent_payments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Get recent announcements
+    $stmt = $conn->prepare("
+        SELECT ma.*, poster.full_name as poster_name
+        FROM member_announcements ma
+        JOIN member poster ON poster.id_member = ma.id_poster
+        WHERE ma.id_receiver = ?
+        ORDER BY ma.date_announcement DESC
+        LIMIT 5
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $recent_announcements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Get recent messages
+    $stmt = $conn->prepare("
+        SELECT mm.*, sender.full_name as sender_name
+        FROM member_messages mm
+        JOIN member sender ON sender.id_member = mm.id_sender
+        WHERE mm.id_receiver = ?
+        ORDER BY mm.date_message DESC
+        LIMIT 3
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $recent_messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Get recent notifications
+    $stmt = $conn->prepare("
+        SELECT mn.*, sender.full_name as sender_name
+        FROM member_notifications mn
+        JOIN member sender ON sender.id_member = mn.id_sender
+        WHERE mn.id_receiver = ?
+        ORDER BY mn.date_notification DESC
+        LIMIT 5
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $recent_notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Calculate statistics
+    $stats = [
+        'total_payments' => count($recent_payments),
+        'total_announcements' => count($recent_announcements),
+        'unread_messages' => count($recent_messages),
+        'unread_notifications' => count($recent_notifications),
+        'monthly_charges' => $subscription_info ? $subscription_info['price_subscription'] : 750,
+        'payment_status' => !empty($recent_payments) ? 'paid' : 'pending'
     ];
 
 } catch(PDOException $e) {
     error_log($e->getMessage());
     $resident_info = null;
     $syndic_info = null;
+    $subscription_info = null;
     $total_residents = 0;
-    $my_charges = 0;
-    $payment_status = 'unknown';
-    $pending_requests = 0;
-    $unread_announcements = 0;
+    $total_apartments = 0;
+    $recent_payments = [];
     $recent_announcements = [];
-    $payment_history = [];
+    $recent_messages = [];
+    $recent_notifications = [];
+    $stats = [
+        'total_payments' => 0,
+        'total_announcements' => 0,
+        'unread_messages' => 0,
+        'unread_notifications' => 0,
+        'monthly_charges' => 0,
+        'payment_status' => 'unknown'
+    ];
 }
+
+$page_title = "Espace Résident - Syndic Way";
 ?>
 
 <!DOCTYPE html>
@@ -107,600 +160,1205 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resident Dashboard - Syndic Way</title>
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/sections/dashboard.css">
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
+    <title><?php echo $page_title; ?></title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <style>
-        .apartment-info-card {
-            background: linear-gradient(135deg, var(--color-green), #20c997);
-            color: var(--color-white);
-            padding: 2rem;
-            border-radius: 15px;
-            margin-bottom: 2rem;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
-
-        .apartment-info-card h2 {
-            margin: 0 0 1rem 0;
-            font-size: 1.8rem;
-        }
-
-        .apartment-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-top: 1.5rem;
-        }
-
-        .apartment-detail {
-            background: rgba(255,255,255,0.1);
-            padding: 1rem;
-            border-radius: 10px;
-            backdrop-filter: blur(10px);
-        }
-
-        .apartment-detail i {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .payment-status-card {
-            margin-bottom: 2rem;
-            padding: 1.5rem;
-            border-radius: 10px;
-            border-left: 4px solid;
-        }
-
-        .payment-status-card.paid {
-            background: rgba(40, 167, 69, 0.1);
-            border-color: var(--color-green);
-        }
-
-        .payment-status-card.pending {
-            background: rgba(244, 185, 66, 0.1);
-            border-color: var(--color-yellow);
-        }
-
-        .payment-status-card.overdue {
-            background: rgba(220, 53, 69, 0.1);
-            border-color: #dc3545;
-        }
-
-        .quick-actions-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .action-card {
-            background: var(--color-white);
-            padding: 1.5rem;
-            border-radius: 15px;
-            text-align: center;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .action-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(135deg, var(--color-green), #20c997);
-        }
-
-        .action-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--color-green);
-            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-        }
-
-        .syndic-contact-card {
-            background: var(--color-white);
-            padding: 2rem;
-            border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-        }
-
-        .contact-info {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .contact-detail {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1rem;
-            background: var(--color-light-grey);
-            border-radius: 10px;
-        }
-
-        .two-column-layout {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .announcements-section,
-        .payment-history-section {
-            background: var(--color-white);
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
-
-        .section-header {
-            background: linear-gradient(135deg, var(--color-green), #20c997);
-            color: var(--color-white);
-            padding: 1.5rem;
-        }
-
-        .section-header h3 {
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .announcement-item {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--color-light-grey);
-            position: relative;
-        }
-
-        .announcement-item:last-child {
-            border-bottom: none;
-        }
-
-        .announcement-item.unread {
-            background: rgba(40, 167, 69, 0.05);
-            border-left: 4px solid var(--color-green);
-        }
-
-        .payment-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--color-light-grey);
-        }
-
-        .payment-item:last-child {
-            border-bottom: none;
-        }
-
-        @media (max-width: 768px) {
-            .apartment-details {
-                grid-template-columns: 1fr;
-            }
-            
-            .quick-actions-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .two-column-layout {
-                grid-template-columns: 1fr;
-            }
-            
-            .contact-info {
-                grid-template-columns: 1fr;
-            }
-        }
+       * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8fafc;
+    color: #334155;
+    line-height: 1.5;
+}
+.container {
+    display: flex;
+    height: 100vh;
+}
+/* Alert Messages */
+.alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+.alert-success {
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+.alert-error {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+/* Sidebar */
+.sidebar {
+    width: 240px;
+    background: white;
+    border-right: 1px solid #e2e8f0;
+    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+}
+.logo {
+    padding: 0 20px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 20px;
+}
+.logo-icon {
+    width: 32px;
+    height: 32px;
+    background: #FFCB32; /* Changed to #FFCB32 */
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+.logo-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+}
+.nav-section {
+    padding: 0 20px;
+    margin-bottom: 30px;
+}
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #64748b;
+    text-decoration: none;
+    margin-bottom: 4px;
+    transition: all 0.2s;
+    font-size: 14px;
+    position: relative;
+}
+.nav-item:hover,
+.nav-item.active {
+    background: #f1f5f9;
+    color: #FFCB32; /* Changed to #FFCB32 */
+}
+.nav-item i {
+    width: 16px;
+    text-align: center;
+}
+.notifications-badge {
+    position: absolute;
+    right: 8px;
+    background: #ef4444;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 500;
+}
+.resident-info {
+    margin-top: auto;
+    padding: 16px 20px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin: 20px;
+}
+.resident-avatar {
+    width: 40px;
+    height: 40px;
+    background: #FFCB32; /* Changed to #FFCB32 */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.resident-details {
+    font-size: 12px;
+    color: #64748b;
+}
+/* Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+/* Header */
+.header {
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+.header-nav a {
+    color: #64748b;
+    text-decoration: none;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+.header-nav a.active {
+    color: #FFCB32; /* Changed to #FFCB32 */
+    background: #FFF0C3; /* Changed to #FFF0C3 */
+}
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.search-box {
+    position: relative;
+}
+.search-box input {
+    width: 300px;
+    padding: 8px 12px 8px 36px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #f8fafc;
+}
+.search-box i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+}
+.header-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    background: #FFCB32; /* Changed to #FFCB32 */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+}
+/* Quick Access Section */
+.quick-access {
+    padding: 24px;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
+}
+.quick-access-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.quick-access-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+}
+.quick-access-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+.quick-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+}
+.quick-card:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+}
+.quick-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 20px;
+    color: white;
+}
+.quick-card.payments .quick-card-icon { background: #FFCB32; } /* Changed to #FFCB32 */
+.quick-card.messages .quick-card-icon { background: #3b82f6; }
+.quick-card.announcements .quick-card-icon { background: #f59e0b; }
+.quick-card.profile .quick-card-icon { background: #8b5cf6; }
+.quick-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+.quick-card-stats {
+    font-size: 12px;
+    color: #64748b;
+}
+.quick-card-count {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e293b;
+}
+/* Content Area */
+.content-area {
+    flex: 1;
+    display: flex;
+}
+.main-panel {
+    flex: 1;
+    padding: 24px;
+}
+/* Breadcrumb */
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #64748b;
+}
+.breadcrumb a {
+    color: #64748b;
+    text-decoration: none;
+}
+.breadcrumb a:hover {
+    color: #FFCB32; /* Changed to #FFCB32 */
+}
+/* Table Header */
+.table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.view-options {
+    display: flex;
+    gap: 8px;
+}
+.view-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e2e8f0;
+    background: white;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.view-btn.active {
+    background: #FFCB32; /* Changed to #FFCB32 */
+    color: white;
+    border-color: #FFCB32; /* Changed to #FFCB32 */
+}
+.add-btn {
+    background: #FFCB32; /* Changed to #FFCB32 */
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+.add-btn:hover {
+    background: #f59e0b;
+}
+/* Data Table */
+.data-table {
+    width: 100%;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+.table-header-row {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+.table-header-row th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 500;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.table-row {
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.2s;
+}
+.table-row:hover {
+    background: #f8fafc;
+}
+.table-row td {
+    padding: 16px;
+    font-size: 14px;
+    color: #1e293b;
+}
+.table-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    color: white;
+    font-size: 14px;
+}
+.file-item {
+    display: flex;
+    align-items: center;
+}
+.file-info {
+    flex: 1;
+}
+.file-name {
+    font-weight: 500;
+    color: #1e293b;
+}
+.sharing-avatars {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.sharing-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #FFCB32; /* Changed to #FFCB32 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 10px;
+    font-weight: 500;
+    border: 2px solid white;
+}
+.sharing-count {
+    font-size: 12px;
+    color: #64748b;
+    margin-left: 8px;
+}
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+.status-paid {
+    background: #dcfce7;
+    color: #16a34a;
+}
+.status-pending {
+    background: #fef3c7;
+    color: #d97706;
+}
+.status-overdue {
+    background: #fef2f2;
+    color: #dc2626;
+}
+/* Activity Panel */
+.activity-panel {
+    width: 320px;
+    background: white;
+    border-left: 1px solid #e2e8f0;
+    padding: 24px;
+}
+.activity-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.activity-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e293b;
+}
+.close-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: none;
+    color: #64748b;
+    cursor: pointer;
+}
+.activity-tabs {
+    display: flex;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 20px;
+}
+.activity-tab {
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #64748b;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.activity-tab.active {
+    color: #FFCB32; /* Changed to #FFCB32 */
+    border-bottom-color: #FFCB32; /* Changed to #FFCB32 */
+}
+.activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.activity-item:last-child {
+    border-bottom: none;
+}
+.activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: white;
+}
+.activity-icon.payment { background: #FFCB32; } /* Changed to #FFCB32 */
+.activity-icon.announcement { background: #f59e0b; }
+.activity-icon.message { background: #3b82f6; }
+.activity-icon.notification { background: #8b5cf6; }
+.activity-content {
+    flex: 1;
+}
+.activity-text {
+    font-size: 14px;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+.activity-time {
+    font-size: 12px;
+    color: #64748b;
+}
+.activity-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+.tag {
+    background: #FFF0C3; /* Changed to #FFF0C3 */
+    color: #FFCB32; /* Changed to #FFCB32 */
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+}
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #64748b;
+}
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.3;
+}
+/* Responsive */
+@media (max-width: 1024px) {
+    .content-area {
+        flex-direction: column;
+    }
+    .activity-panel {
+        width: 100%;
+    }
+}
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+    }
+    .sidebar {
+        width: 100%;
+        height: auto;
+    }
+    .quick-access-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .search-box input {
+        width: 200px;
+    }
+}
+/* Enhanced animations */
+.table-row {
+    transition: all 0.2s ease;
+}
+.table-row:hover {
+    transform: translateX(2px);
+}
+.quick-card {
+    transition: all 0.3s ease;
+}
+.quick-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
     </style>
 </head>
-
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-brand">
-            <h2><i class="fas fa-home"></i> Espace Résident</h2>
-        </div>
-        <div class="nav-user">
-            <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Résident'); ?></span>
-            <a href="http://localhost/syndicplatform/public/logout.php" class="btn btn-logout">
-                <i class="fas fa-sign-out-alt"></i> Déconnexion
-            </a>
-        </div>
-    </nav>
-
-    <div class="dashboard-container">
+    <div class="container">
         <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h3>Navigation</h3>
+        <div class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">SR</div>
+                <div class="logo-text">Syndic Resident</div>
             </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    <li class="active">
-                        <a href="dashboard.php">
-                            <i class="fas fa-tachometer-alt"></i> Tableau de bord
-                        </a>
-                    </li>
-                    <li>
-                        <a href="payments.php">
-                            <i class="fas fa-credit-card"></i> Mes paiements
-                        </a>
-                    </li>
-                    <li>
-                        <a href="maintenance.php">
-                            <i class="fas fa-tools"></i> Demandes maintenance
-                            <?php if($pending_requests > 0): ?>
-                                <span class="notifications-badge"><?php echo $pending_requests; ?></span>
-                            <?php endif; ?>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="announcements.php">
-                            <i class="fas fa-bullhorn"></i> Annonces
-                            <?php if($unread_announcements > 0): ?>
-                                <span class="notifications-badge"><?php echo $unread_announcements; ?></span>
-                            <?php endif; ?>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="neighbors.php">
-                            <i class="fas fa-users"></i> Voisinage
-                        </a>
-                    </li>
-                    <li>
-                        <a href="documents.php">
-                            <i class="fas fa-file-alt"></i> Documents
-                        </a>
-                    </li>
-                    <li>
-                        <a href="contact.php">
-                            <i class="fas fa-envelope"></i> Contact syndic
-                        </a>
-                    </li>
-                    <li>
-                        <a href="profile.php">
-                            <i class="fas fa-user-cog"></i> Mon profil
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </aside>
+
+            <div class="nav-section">
+                <a href="#" class="nav-item active">
+                    <i class="fas fa-th-large"></i>
+                    Tableau de Bord
+                </a>
+                <a href="payments.php" class="nav-item">
+                    <i class="fas fa-credit-card"></i>
+                    Paiements
+                </a>
+                <a href="messages.php" class="nav-item">
+                    <i class="fas fa-envelope"></i>
+                    Messages
+                </a>
+                <a href="announcements.php" class="nav-item">
+                    <i class="fas fa-bullhorn"></i>
+                    Annonces
+                </a>
+                <a href="profile.php" class="nav-item">
+                    <i class="fas fa-user-cog"></i>
+                    Mon Profil
+                </a>
+                <a href="../public/login.php?logout=1" class="nav-item">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Déconnexion
+                </a>
+            </div>
+
+            <div class="resident-info">
+                <div class="resident-avatar"><?php echo strtoupper(substr($current_user['name'], 0, 1)); ?></div>
+                <div style="font-weight: 600; margin-bottom: 4px;"><?php echo htmlspecialchars($current_user['name']); ?></div>
+                <?php if ($resident_info): ?>
+                    <div class="resident-details">Apt. <?php echo $resident_info['number']; ?> - Étage <?php echo $resident_info['floor']; ?></div>
+                    <div class="resident-details"><?php echo htmlspecialchars($resident_info['building_name'] ?? 'Mon Immeuble'); ?></div>
+                <?php endif; ?>
+                <div class="resident-details" style="margin-top: 8px;">
+                    <?php echo $total_residents; ?> résidents • <?php echo $total_apartments; ?> appartements
+                </div>
+            </div>
+        </div>
 
         <!-- Main Content -->
-        <main class="main-content">
-            <!-- Apartment Info Card -->
-            <?php if ($resident_info): ?>
-                <div class="apartment-info-card">
-                    <h2>Appartement <?php echo htmlspecialchars($resident_info['number']); ?></h2>
-                    <p><i class="fas fa-building"></i> <?php echo htmlspecialchars($resident_info['building_name'] ?? 'Mon Immeuble'); ?></p>
-                    <p><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($resident_info['address'] ?? ''); ?>, <?php echo htmlspecialchars($resident_info['city_name'] ?? ''); ?></p>
-                    
-                    <div class="apartment-details">
-                        <div class="apartment-detail">
-                            <i class="fas fa-home"></i>
-                            <h4>Appartement <?php echo $resident_info['number']; ?></h4>
-                            <p>Étage <?php echo $resident_info['floor']; ?></p>
-                        </div>
-                        <div class="apartment-detail">
-                            <i class="fas fa-door-open"></i>
-                            <h4><?php echo htmlspecialchars($resident_info['type']); ?></h4>
-                            <p>Type d'appartement</p>
-                        </div>
-                        <div class="apartment-detail">
-                            <i class="fas fa-users"></i>
-                            <h4><?php echo $total_residents; ?> résidents</h4>
-                            <p>Dans l'immeuble</p>
-                        </div>
-                        <div class="apartment-detail">
-                            <i class="fas fa-calendar"></i>
-                            <h4><?php echo date('M Y', strtotime($resident_info['date_created'])); ?></h4>
-                            <p>Résident depuis</p>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <!-- Payment Status -->
-            <div class="payment-status-card <?php echo $payment_status; ?>">
-                <h4>
-                    <?php if ($payment_status === 'paid'): ?>
-                        <i class="fas fa-check-circle"></i> Paiements à jour
-                    <?php elseif ($payment_status === 'pending'): ?>
-                        <i class="fas fa-clock"></i> Paiement en attente
-                    <?php else: ?>
-                        <i class="fas fa-exclamation-triangle"></i> Paiement en retard
-                    <?php endif; ?>
-                </h4>
-                <p>
-                    <?php if ($payment_status === 'paid'): ?>
-                        Votre dernier paiement de <?php echo number_format($my_charges); ?> DH a été effectué le <?php echo date('d/m/Y', strtotime($last_payment_date)); ?>.
-                        Prochain paiement prévu le <?php echo date('d/m/Y', strtotime($next_payment_due)); ?>.
-                    <?php elseif ($payment_status === 'pending'): ?>
-                        Votre paiement de <?php echo number_format($my_charges); ?> DH est attendu avant le <?php echo date('d/m/Y', strtotime($next_payment_due)); ?>.
-                    <?php else: ?>
-                        Votre paiement de <?php echo number_format($my_charges); ?> DH était dû le <?php echo date('d/m/Y', strtotime($next_payment_due)); ?>. Veuillez régulariser votre situation.
-                    <?php endif; ?>
-                </p>
-            </div>
-
-            <!-- Statistics Cards -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon">
-                        <i class="fas fa-money-bill-wave"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Charges mensuelles</h3>
-                        <div class="stat-number"><?php echo number_format($my_charges); ?> DH</div>
-                    </div>
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-nav">
+                    <a href="#" class="active">Dashboard</a>
+                    <a href="payments.php">Paiements</a>
+                    <a href="messages.php">Messages</a>
+                    <a href="announcements.php">Annonces</a>
                 </div>
 
-                <div class="stat-card <?php echo $payment_status !== 'paid' ? 'pending' : ''; ?>">
-                    <div class="stat-icon">
-                        <i class="fas fa-calendar-check"></i>
+                <div class="header-actions">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Rechercher...">
                     </div>
-                    <div class="stat-content">
-                        <h3>Statut paiement</h3>
-                        <div class="stat-number">
-                            <?php 
-                                $status_text = [
-                                    'paid' => 'À jour',
-                                    'pending' => 'En attente',
-                                    'overdue' => 'En retard'
-                                ];
-                                echo $status_text[$payment_status] ?? 'Inconnu';
-                            ?>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="stat-card <?php echo $pending_requests > 0 ? 'pending' : ''; ?>">
-                    <div class="stat-icon">
-                        <i class="fas fa-tools"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Demandes en cours</h3>
-                        <div class="stat-number"><?php echo $pending_requests; ?></div>
-                    </div>
-                </div>
-
-                <div class="stat-card <?php echo $unread_announcements > 0 ? 'pending' : ''; ?>">
-                    <div class="stat-icon">
-                        <i class="fas fa-bell"></i>
-                    </div>
-                    <div class="stat-content">
-                        <h3>Nouvelles annonces</h3>
-                        <div class="stat-number"><?php echo $unread_announcements; ?></div>
+                    <i class="fas fa-bell" style="color: #64748b; cursor: pointer;"></i>
+                    <div class="header-user">
+                        <div class="user-avatar"><?php echo strtoupper(substr($current_user['name'], 0, 1)); ?></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Quick Actions -->
-            <div class="content-section">
-                <h2>Actions rapides</h2>
-                <div class="quick-actions-grid">
-                    <a href="payments.php?action=pay" class="action-card">
-                        <i class="fas fa-credit-card"></i>
-                        <h3>Payer mes charges</h3>
-                        <p>Effectuer le paiement de mes charges mensuelles</p>
-                    </a>
-
-                    <a href="maintenance.php?action=new" class="action-card">
-                        <i class="fas fa-wrench"></i>
-                        <h3>Demande de maintenance</h3>
-                        <p>Signaler un problème ou demander une intervention</p>
-                    </a>
-
-                    <a href="contact.php" class="action-card">
-                        <i class="fas fa-envelope"></i>
-                        <h3>Contacter le syndic</h3>
-                        <p>Envoyer un message au syndic de l'immeuble</p>
-                    </a>
-
-                    <a href="documents.php" class="action-card">
-                        <i class="fas fa-download"></i>
-                        <h3>Mes documents</h3>
-                        <p>Télécharger quittances et documents officiels</p>
-                    </a>
-
-                    <a href="neighbors.php" class="action-card">
-                        <i class="fas fa-users"></i>
-                        <h3>Annuaire des voisins</h3>
-                        <p>Consulter les contacts des autres résidents</p>
-                    </a>
-
-                    <a href="profile.php" class="action-card">
-                        <i class="fas fa-user-edit"></i>
-                        <h3>Modifier mon profil</h3>
-                        <p>Mettre à jour mes informations personnelles</p>
-                    </a>
+            <!-- Quick Access -->
+            <div class="quick-access">
+                <div class="quick-access-header">
+                    <div class="quick-access-title">Accès Rapide</div>
+                    <i class="fas fa-ellipsis-h" style="color: #64748b; cursor: pointer;"></i>
                 </div>
-            </div>
 
-            <!-- Syndic Contact Card -->
-            <?php if ($syndic_info): ?>
-                <div class="syndic-contact-card">
-                    <h3><i class="fas fa-user-tie"></i> Contact de votre syndic</h3>
-                    <div class="contact-info">
-                        <div class="contact-detail">
-                            <i class="fas fa-user"></i>
-                            <span><?php echo htmlspecialchars($syndic_info['syndic_name']); ?></span>
+                <div class="quick-access-grid">
+                    <a href="payments.php" class="quick-card payments">
+                        <div class="quick-card-icon">
+                            <i class="fas fa-credit-card"></i>
                         </div>
-                        <div class="contact-detail">
+                        <div class="quick-card-title">Mes Paiements</div>
+                        <div class="quick-card-count"><?php echo number_format($stats['monthly_charges']); ?> DH</div>
+                        <div class="quick-card-stats">Charges mensuelles</div>
+                    </a>
+
+                    <a href="messages.php" class="quick-card messages">
+                        <div class="quick-card-icon">
                             <i class="fas fa-envelope"></i>
-                            <a href="mailto:<?php echo htmlspecialchars($syndic_info['syndic_email']); ?>">
-                                <?php echo htmlspecialchars($syndic_info['syndic_email']); ?>
-                            </a>
                         </div>
-                        <?php if ($syndic_info['syndic_phone']): ?>
-                            <div class="contact-detail">
-                                <i class="fas fa-phone"></i>
-                                <a href="tel:<?php echo htmlspecialchars($syndic_info['syndic_phone']); ?>">
-                                    <?php echo htmlspecialchars($syndic_info['syndic_phone']); ?>
-                                </a>
-                            </div>
-                        <?php endif; ?>
-                        <div class="contact-detail">
-                            <i class="fas fa-comments"></i>
-                            <a href="contact.php">Envoyer un message</a>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
+                        <div class="quick-card-title">Messages</div>
+                        <div class="quick-card-count"><?php echo $stats['unread_messages']; ?></div>
+                        <div class="quick-card-stats">Messages non lus</div>
+                    </a>
 
-            <!-- Two Column Layout: Announcements and Payment History -->
-            <div class="two-column-layout">
-                <!-- Recent Announcements -->
-                <div class="announcements-section">
-                    <div class="section-header">
-                        <h3>
+                    <a href="announcements.php" class="quick-card announcements">
+                        <div class="quick-card-icon">
                             <i class="fas fa-bullhorn"></i>
-                            Dernières annonces
-                        </h3>
-                    </div>
+                        </div>
+                        <div class="quick-card-title">Annonces</div>
+                        <div class="quick-card-count"><?php echo $stats['total_announcements']; ?></div>
+                        <div class="quick-card-stats">Nouvelles annonces</div>
+                    </a>
 
-                    <?php if (!empty($recent_announcements)): ?>
-                        <?php foreach ($recent_announcements as $announcement): ?>
-                            <div class="announcement-item <?php echo !$announcement['is_read'] ? 'unread' : ''; ?>">
-                                <div class="announcement-title"><?php echo htmlspecialchars($announcement['title']); ?></div>
-                                <div class="announcement-content"><?php echo htmlspecialchars($announcement['content']); ?></div>
-                                <div class="announcement-date">
-                                    <i class="fas fa-clock"></i> 
-                                    <?php echo date('d/m/Y à H:i', strtotime($announcement['date_posted'])); ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                        <div style="padding: 1rem; text-align: center;">
-                            <a href="announcements.php" class="btn btn-secondary">
-                                <i class="fas fa-eye"></i> Voir toutes les annonces
-                            </a>
+                    <a href="profile.php" class="quick-card profile">
+                        <div class="quick-card-icon">
+                            <i class="fas fa-user-cog"></i>
                         </div>
-                    <?php else: ?>
-                        <div class="empty-state" style="padding: 2rem; text-align: center;">
-                            <i class="fas fa-bullhorn" style="font-size: 2rem; color: var(--color-grey); margin-bottom: 1rem;"></i>
-                            <h4>Aucune annonce</h4>
-                            <p>Il n'y a pas d'annonces récentes.</p>
-                        </div>
-                    <?php endif; ?>
-                </div>
-
-                <!-- Payment History -->
-                <div class="payment-history-section">
-                    <div class="section-header">
-                        <h3>
-                            <i class="fas fa-history"></i>
-                            Historique des paiements
-                        </h3>
-                    </div>
-
-                    <?php if (!empty($payment_history)): ?>
-                        <?php foreach ($payment_history as $payment): ?>
-                            <div class="payment-item">
-                                <div class="payment-info">
-                                    <div class="payment-month"><?php echo $payment['month']; ?></div>
-                                    <div class="payment-date">Payé le <?php echo date('d/m/Y', strtotime($payment['payment_date'])); ?></div>
-                                </div>
-                                <div class="payment-amount"><?php echo number_format($payment['amount']); ?> DH</div>
-                                <span class="payment-badge payment-<?php echo $payment['status']; ?>">
-                                    <?php echo $payment['status'] === 'paid' ? 'Payé' : 'En attente'; ?>
-                                </span>
-                            </div>
-                        <?php endforeach; ?>
-                        <div style="padding: 1rem; text-align: center;">
-                            <a href="payments.php" class="btn btn-secondary">
-                                <i class="fas fa-eye"></i> Voir tout l'historique
-                            </a>
-                        </div>
-                    <?php else: ?>
-                        <div class="empty-state" style="padding: 2rem; text-align: center;">
-                            <i class="fas fa-credit-card" style="font-size: 2rem; color: var(--color-grey); margin-bottom: 1rem;"></i>
-                            <h4>Aucun paiement</h4>
-                            <p>Votre historique de paiements apparaîtra ici.</p>
-                        </div>
-                    <?php endif; ?>
+                        <div class="quick-card-title">Mon Profil</div>
+                        <div class="quick-card-count">✓</div>
+                        <div class="quick-card-stats">Gérer mon compte</div>
+                    </a>
                 </div>
             </div>
-        </main>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <div class="main-panel">
+                    <!-- Breadcrumb -->
+                    <div class="breadcrumb">
+                        <a href="#">Accueil</a>
+                        <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                        <a href="#">Espace Résident</a>
+                        <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                        <span>Mon Tableau de Bord</span>
+                    </div>
+
+                    <!-- Table Header -->
+                    <div class="table-header">
+                        <div class="view-options">
+                            <div class="view-btn active">
+                                <i class="fas fa-th"></i>
+                            </div>
+                            <div class="view-btn">
+                                <i class="fas fa-list"></i>
+                            </div>
+                        </div>
+                        <a href="payments.php?action=pay" class="add-btn">
+                            <i class="fas fa-credit-card"></i>
+                            Effectuer un Paiement
+                        </a>
+                    </div>
+
+                    <!-- Resident Activities Table -->
+                    <table class="data-table">
+                        <thead class="table-header-row">
+                            <tr>
+                                <th>Type</th>
+                                <th>Informations</th>
+                                <th>Statut</th>
+                                <th>Date/Période</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Apartment Info Row -->
+                            <?php if ($resident_info): ?>
+                            <tr class="table-row">
+                                <td>
+                                    <div class="file-item">
+                                        <div class="table-icon" style="background: #10b981;">
+                                            <i class="fas fa-home"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">Mon Appartement</div>
+                                            <div style="font-size: 12px; color: #64748b;">Informations du logement</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 14px; font-weight: 600;">
+                                        Appartement <?php echo htmlspecialchars($resident_info['number']); ?> - Étage <?php echo $resident_info['floor']; ?>
+                                    </div>
+                                    <div style="font-size: 12px; color: #64748b;">
+                                        <?php echo htmlspecialchars($resident_info['building_name']); ?>
+                                    </div>
+                                    <div style="font-size: 12px; color: #64748b;">
+                                        <?php echo htmlspecialchars($resident_info['address']); ?>, <?php echo htmlspecialchars($resident_info['city_name']); ?>
+                                    </div>
+                                </td>
+                                <td><span class="status-badge status-paid">Résident</span></td>
+                                <td>Depuis <?php echo date('M Y', strtotime($resident_info['date_created'])); ?></td>
+                                <td>
+                                    <i class="fas fa-ellipsis-h" style="color: #64748b; cursor: pointer;"></i>
+                                </td>
+                            </tr>
+                            <?php endif; ?>
+
+                            <!-- Payment Status Row -->
+                            <tr class="table-row">
+                                <td>
+                                    <div class="file-item">
+                                        <div class="table-icon" style="background: #10b981;">
+                                            <i class="fas fa-credit-card"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">Charges Mensuelles</div>
+                                            <div style="font-size: 12px; color: #64748b;">Paiement récurrent</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 14px; font-weight: 600;">
+                                        <?php echo number_format($stats['monthly_charges']); ?> DH
+                                    </div>
+                                    <div style="font-size: 12px; color: #64748b;">
+                                        Charges pour <?php echo date('F Y'); ?>
+                                    </div>
+                                    <?php if (!empty($recent_payments)): ?>
+                                        <div style="font-size: 12px; color: #64748b;">
+                                            Dernier paiement: <?php echo date('d/m/Y', strtotime($recent_payments[0]['date_payment'])); ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <span class="status-badge status-<?php echo $stats['payment_status']; ?>">
+                                        <?php 
+                                            $status_text = [
+                                                'paid' => 'Payé',
+                                                'pending' => 'En attente',
+                                                'overdue' => 'En retard'
+                                            ];
+                                            echo $status_text[$stats['payment_status']] ?? 'Inconnu';
+                                        ?>
+                                    </span>
+                                </td>
+                                <td><?php echo date('F Y'); ?></td>
+                                <td>
+                                    <i class="fas fa-ellipsis-h" style="color: #64748b; cursor: pointer;"></i>
+                                </td>
+                            </tr>
+
+                            <!-- Subscription Info Row -->
+                            <?php if ($subscription_info): ?>
+                            <tr class="table-row">
+                                <td>
+                                    <div class="file-item">
+                                        <div class="table-icon" style="background: #8b5cf6;">
+                                            <i class="fas fa-star"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">Abonnement Actuel</div>
+                                            <div style="font-size: 12px; color: #64748b;">Plan de service</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 14px; font-weight: 600;">
+                                        <?php echo htmlspecialchars($subscription_info['name_subscription']); ?>
+                                    </div>
+                                    <div style="font-size: 12px; color: #64748b;">
+                                        <?php echo htmlspecialchars($subscription_info['description']); ?>
+                                    </div>
+                                    <div style="font-size: 12px; color: #64748b;">
+                                        <?php echo number_format($subscription_info['price_subscription']); ?> DH/mois
+                                    </div>
+                                </td>
+                                <td><span class="status-badge status-paid">Actif</span></td>
+                                <td>Permanent</td>
+                                <td>
+                                    <i class="fas fa-ellipsis-h" style="color: #64748b; cursor: pointer;"></i>
+                                </td>
+                            </tr>
+                            <?php endif; ?>
+
+                            <!-- Syndic Contact Row -->
+                            <?php if ($syndic_info): ?>
+                            <tr class="table-row">
+                                <td>
+                                    <div class="file-item">
+                                        <div class="table-icon" style="background: #f59e0b;">
+                                            <i class="fas fa-user-tie"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">Contact Syndic</div>
+                                            <div style="font-size: 12px; color: #64748b;">Gestionnaire de l'immeuble</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 14px; font-weight: 600;">
+                                        <?php echo htmlspecialchars($syndic_info['syndic_name']); ?>
+                                    </div>
+                                    <div style="font-size: 12px; color: #64748b;">
+                                        <?php echo htmlspecialchars($syndic_info['syndic_email']); ?>
+                                    </div>
+                                    <?php if ($syndic_info['syndic_phone']): ?>
+                                        <div style="font-size: 12px; color: #64748b;">
+                                            <?php echo htmlspecialchars($syndic_info['syndic_phone']); ?>
+                                        </div>
+                                    <?php endif; ?>
+                                </td>
+                                <td><span class="status-badge status-paid">Disponible</span></td>
+                                <td>Contact direct</td>
+                                <td>
+                                    <i class="fas fa-ellipsis-h" style="color: #64748b; cursor: pointer;"></i>
+                                </td>
+                            </tr>
+                            <?php endif; ?>
+
+                            <!-- Recent Payments -->
+                            <?php if (!empty($recent_payments)): ?>
+                                <?php foreach (array_slice($recent_payments, 0, 3) as $payment): ?>
+                                <tr class="table-row">
+                                    <td>
+                                        <div class="file-item">
+                                            <div class="table-icon" style="background: #10b981;">
+                                                <i class="fas fa-receipt"></i>
+                                            </div>
+                                            <div class="file-info">
+                                                <div class="file-name">Paiement Effectué</div>
+                                                <div style="font-size: 12px; color: #64748b;">Transaction validée</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style="font-size: 14px;">
+                                            <?php echo $payment['month_paid'] ? 'Charges ' . date('M Y', strtotime($payment['month_paid'])) : 'Paiement effectué'; ?>
+                                        </div>
+                                        <?php if ($payment['receiver_name']): ?>
+                                            <div style="font-size: 12px; color: #64748b;">
+                                                Destinataire: <?php echo htmlspecialchars($payment['receiver_name']); ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><span class="status-badge status-paid">Effectué</span></td>
+                                    <td><?php echo date('d/m/Y', strtotime($payment['date_payment'])); ?></td>
+                                    <td>
+                                        <i class="fas fa-ellipsis-h" style="color: #64748b; cursor: pointer;"></i>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+
+                            <!-- Building Information Row -->
+                            <tr class="table-row">
+                                <td>
+                                    <div class="file-item">
+                                        <div class="table-icon" style="background: #3b82f6;">
+                                            <i class="fas fa-building"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">Informations Immeuble</div>
+                                            <div style="font-size: 12px; color: #64748b;">Détails de la résidence</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="sharing-avatars">
+                                        <?php 
+                                        $resident_avatars = min(4, $total_residents);
+                                        for ($i = 0; $i < $resident_avatars; $i++): 
+                                        ?>
+                                            <div class="sharing-avatar"><?php echo chr(65 + $i); ?></div>
+                                        <?php endfor; ?>
+                                        <?php if ($total_residents > 4): ?>
+                                            <span class="sharing-count">+<?php echo $total_residents - 4; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div style="font-size: 12px;">
+                                        <?php echo $total_residents; ?> résidents<br>
+                                        <?php echo $total_apartments; ?> appartements
+                                    </div>
+                                </td>
+                                <td>Communauté active</td>
+                                <td>
+                                    <i class="fas fa-ellipsis-h" style="color: #64748b; cursor: pointer;"></i>
+                                </td>
+                            </tr>
+
+                            <!-- If no data available -->
+                            <?php if (empty($recent_payments) && !$resident_info && !$syndic_info): ?>
+                            <tr class="table-row">
+                                <td colspan="5">
+                                    <div class="empty-state">
+                                        <i class="fas fa-home"></i>
+                                        <div>Aucune information disponible</div>
+                                        <div style="font-size: 12px; margin-top: 8px;">Vos informations de résidence apparaîtront ici</div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Activity Panel -->
+                <div class="activity-panel">
+                    <div class="activity-header">
+                        <div class="activity-title">Activité</div>
+                        <button class="close-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="activity-tabs">
+                        <div class="activity-tab active">Activité</div>
+                        <div class="activity-tab">Messages</div>
+                        <div class="activity-tab">Annonces</div>
+                    </div>
+
+                    <!-- Recent Activities -->
+                    <?php if (!empty($recent_payments) || !empty($recent_announcements) || !empty($recent_messages) || !empty($recent_notifications)): ?>
+                        
+                        <!-- Recent Payments -->
+                        <?php foreach (array_slice($recent_payments, 0, 2) as $payment): ?>
+                        <div class="activity-item">
+                            <div class="activity-icon payment">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-text">Paiement effectué</div>
+                                <div class="activity-time"><?php echo date('d/m/Y à H:i', strtotime($payment['date_payment'])); ?></div>
+                                <div class="activity-meta">
+                                    <div class="sharing-avatar">P</div>
+                                    <span style="font-size: 12px; color: #64748b;">
+                                        <?php echo $payment['month_paid'] ? date('M Y', strtotime($payment['month_paid'])) : 'Paiement'; ?>
+                                    </span>
+                                    <div class="tag">Effectué</div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+
+                        <!-- Recent Announcements -->
+                        <?php foreach (array_slice($recent_announcements, 0, 2) as $announcement): ?>
+                        <div class="activity-item">
+                            <div class="activity-icon announcement">
+                                <i class="fas fa-bullhorn"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-text">Nouvelle annonce reçue</div>
+                                <div class="activity-time"><?php echo date('d/m/Y à H:i', strtotime($announcement['date_announcement'])); ?></div>
+                                <div class="activity-meta">
+                                    <div class="sharing-avatar"><?php echo strtoupper(substr($announcement['poster_name'], 0, 1)); ?></div>
+                                    <span style="font-size: 12px; color: #64748b;"><?php echo htmlspecialchars($announcement['poster_name']); ?></span>
+                                    <div class="tag">Annonce</div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+
+                        <!-- Recent Messages -->
+                        <?php foreach (array_slice($recent_messages, 0, 2) as $message): ?>
+                        <div class="activity-item">
+                            <div class="activity-icon message">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-text">Nouveau message reçu</div>
+                                <div class="activity-time"><?php echo date('d/m/Y à H:i', strtotime($message['date_message'])); ?></div>
+                                <div class="activity-meta">
+                                    <div class="sharing-avatar"><?php echo strtoupper(substr($message['sender_name'], 0, 1)); ?></div>
+                                    <span style="font-size: 12px; color: #64748b;"><?php echo htmlspecialchars($message['sender_name']); ?></span>
+                                    <div class="tag">Message</div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+
+                        <!-- Recent Notifications -->
+                        <?php foreach (array_slice($recent_notifications, 0, 1) as $notification): ?>
+                        <div class="activity-item">
+                            <div class="activity-icon notification">
+                                <i class="fas fa-bell"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-text">Nouvelle notification</div>
+                                <div class="activity-time"><?php echo date('d/m/Y à H:i', strtotime($notification['date_notification'])); ?></div>
+                                <div class="activity-meta">
+                                    <div class="sharing-avatar"><?php echo strtoupper(substr($notification['sender_name'], 0, 1)); ?></div>
+                                    <span style="font-size: 12px; color: #64748b;"><?php echo htmlspecialchars($notification['sender_name']); ?></span>
+                                    <div class="tag">Notification</div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+
+                        <!-- Welcome message for new residents -->
+                        <?php if ($resident_info && (time() - strtotime($resident_info['date_created'])) < 7 * 24 * 60 * 60): ?>
+                        <div class="activity-item">
+                            <div class="activity-icon" style="background: #10b981;">
+                                <i class="fas fa-home"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-text">Bienvenue dans votre nouvel appartement !</div>
+                                <div class="activity-time">Inscrit le <?php echo date('d/m/Y', strtotime($resident_info['date_created'])); ?></div>
+                                <div class="activity-meta">
+                                    <div class="sharing-avatar">🏠</div>
+                                    <span style="font-size: 12px; color: #64748b;">Syndic Way</span>
+                                    <div class="tag">Nouveau</div>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                    <?php else: ?>
+                        <div class="empty-state">
+                            <i class="fas fa-calendar-alt"></i>
+                            <div>Aucune activité récente</div>
+                            <div style="font-size: 12px; margin-top: 8px;">
+                                Vos paiements, messages et annonces apparaîtront ici
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Quick Actions in Activity Panel -->
+                    <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                        <div style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #1e293b;">
+                            Actions Rapides
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <a href="payments.php?action=pay" style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; background: #f8fafc; text-decoration: none; color: #64748b; font-size: 12px; transition: all 0.2s;">
+                                <i class="fas fa-credit-card" style="color: #10b981;"></i>
+                                Effectuer un paiement
+                            </a>
+                            <a href="messages.php?action=new" style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; background: #f8fafc; text-decoration: none; color: #64748b; font-size: 12px; transition: all 0.2s;">
+                                <i class="fas fa-envelope" style="color: #3b82f6;"></i>
+                                Envoyer un message
+                            </a>
+                            <a href="profile.php" style="display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; background: #f8fafc; text-decoration: none; color: #64748b; font-size: 12px; transition: all 0.2s;">
+                                <i class="fas fa-user-edit" style="color: #8b5cf6;"></i>
+                                Modifier mon profil
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        // Auto-hide alerts
-        document.addEventListener('DOMContentLoaded', function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    alert.style.opacity = '0';
-                    alert.style.transform = 'translateY(-20px)';
-                    setTimeout(() => alert.remove(), 300);
-                }, 5000);
-            });
-
-            // Animate statistics counters
-            document.querySelectorAll('.stat-number').forEach(counter => {
-                const target = parseInt(counter.textContent.replace(/[^0-9]/g, ''));
-                if (!isNaN(target)) {
-                    animateCounter(counter, target);
-                }
-            });
-
-            // Enhanced card hover effects
-            document.querySelectorAll('.action-card').forEach(card => {
-                card.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-5px) scale(1.02)';
-                });
-                
-                card.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translateY(0) scale(1)';
-                });
-            });
-
-            // Mark announcements as read when clicked
-            document.querySelectorAll('.announcement-item.unread').forEach(item => {
-                item.addEventListener('click', function() {
-                    this.classList.remove('unread');
-                    // Here you would typically send an AJAX request to mark as read
-                });
+        // View toggle functionality
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
             });
         });
 
-        function animateCounter(element, target) {
-            let current = 0;
-            const increment = target / 50;
-            const timer = setInterval(() => {
-                current += increment;
-                if (current >= target) {
-                    current = target;
-                    clearInterval(timer);
-                }
-                
-                if (element.textContent.includes('DH')) {
-                    element.textContent = Math.floor(current).toLocaleString() + ' DH';
-                } else if (element.textContent.includes('À jour') || element.textContent.includes('En attente') || element.textContent.includes('En retard')) {
-                    // Don't animate status text
-                    return;
-                } else {
-                    element.textContent = Math.floor(current);
-                }
-            }, 20);
-        }
+        // Activity tabs functionality
+        document.querySelectorAll('.activity-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.activity-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
 
-        // Quick payment functionality
-        function quickPay() {
-            if (confirm('Confirmer le paiement de <?php echo number_format($my_charges); ?> DH pour les charges de ce mois ?')) {
-                // Redirect to payment page
-                window.location.href = 'payments.php?action=pay&amount=<?php echo $my_charges; ?>';
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                if (!this.href.includes('login.php') && !this.href.endsWith('.php')) {
+                    e.preventDefault();
+                    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                }
+            });
+        });
+
+        // Close activity panel
+        document.querySelector('.close-btn').addEventListener('click', function() {
+            document.querySelector('.activity-panel').style.display = 'none';
+            document.querySelector('.main-panel').style.marginRight = '0';
+        });
+
+        // Quick card clicks
+        document.querySelectorAll('.quick-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                if (!this.href) {
+                    e.preventDefault();
+                    console.log('Quick action clicked');
+                }
+            });
+        });
+
+        // Table row hover effects
+        document.querySelectorAll('.table-row').forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = '#f8fafc';
+            });
+            
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '';
+            });
+        });
+
+        // Search functionality
+        document.querySelector('.search-box input').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            document.querySelectorAll('.table-row').forEach(row => {
+                const fileName = row.querySelector('.file-name');
+                if (fileName) {
+                    const text = fileName.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        });
+
+        // Notification bell functionality
+        document.querySelector('.fa-bell').addEventListener('click', function() {
+            const totalNotifications = <?php echo $stats['unread_messages'] + $stats['unread_notifications'] + $stats['total_announcements']; ?>;
+            if (totalNotifications > 0) {
+                alert(`Vous avez ${totalNotifications} notification(s) non lue(s)`);
+            } else {
+                alert('Aucune nouvelle notification');
             }
-        }
+        });
 
-        // Keyboard shortcuts
+        // Keyboard shortcuts for residents
         document.addEventListener('keydown', function(event) {
             // Alt + P for payments
             if (event.altKey && event.key === 'p') {
@@ -708,10 +1366,10 @@ try {
                 window.location.href = 'payments.php';
             }
             
-            // Alt + M for maintenance
+            // Alt + M for messages
             if (event.altKey && event.key === 'm') {
                 event.preventDefault();
-                window.location.href = 'maintenance.php';
+                window.location.href = 'messages.php';
             }
             
             // Alt + A for announcements
@@ -720,11 +1378,72 @@ try {
                 window.location.href = 'announcements.php';
             }
             
-            // Alt + C for contact
-            if (event.altKey && event.key === 'c') {
+            // Alt + N for notifications
+            if (event.altKey && event.key === 'n') {
                 event.preventDefault();
-                window.location.href = 'contact.php';
+                window.location.href = 'notifications.php';
             }
+        });
+
+        // Enhanced interactions
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animate notification badges
+            document.querySelectorAll('.notifications-badge').forEach(badge => {
+                badge.style.animation = 'pulse 2s infinite';
+            });
+
+            // Add pulse animation CSS
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes pulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.1); }
+                    100% { transform: scale(1); }
+                }
+            `;
+            document.head.appendChild(style);
+
+            // Payment status checker
+            const paymentStatus = '<?php echo $stats['payment_status']; ?>';
+            if (paymentStatus === 'pending' || paymentStatus === 'overdue') {
+                const paymentCard = document.querySelector('.quick-card.payments');
+                if (paymentCard) {
+                    paymentCard.style.borderColor = '#f59e0b';
+                    paymentCard.style.background = '#fef3c7';
+                }
+            }
+
+            // Enhanced hover effects for activity panel quick actions
+            document.querySelectorAll('.activity-panel a').forEach(link => {
+                link.addEventListener('mouseenter', function() {
+                    this.style.background = '#e2e8f0';
+                    this.style.transform = 'translateX(4px)';
+                });
+                
+                link.addEventListener('mouseleave', function() {
+                    this.style.background = '#f8fafc';
+                    this.style.transform = 'translateX(0)';
+                });
+            });
+        });
+
+        // Auto-refresh activity panel every 60 seconds
+        setInterval(function() {
+            console.log('Auto-refresh activity...');
+            // You can add AJAX calls here to refresh activity data
+        }, 60000);
+
+        // Enhanced card interactions
+        document.querySelectorAll('.quick-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-3px) scale(1.02)';
+                this.style.boxShadow = '0 12px 24px rgba(0,0,0,0.15)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+                this.style.boxShadow = '';
+            });
         });
     </script>
 </body>

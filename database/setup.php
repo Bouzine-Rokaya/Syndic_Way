@@ -5,19 +5,22 @@ $pass = '';
 $dbname = 'syndic2025';
 
 try {
+    // Create a PDO connection to MySQL
     $conn = new PDO("mysql:host=$host", $user, $pass);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+    // Create the database if it doesn't exist
     $conn->exec("CREATE DATABASE IF NOT EXISTS $dbname CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
     $conn->exec("USE $dbname");
 
+    // SQL schema with tables and relationships
     $sql = <<<SQL
 
--- Tables
+-- 1) Subscriptions table
 CREATE TABLE IF NOT EXISTS subscription (
     id_subscription INT AUTO_INCREMENT PRIMARY KEY,
-    name_subscription VARCHAR(100),
-    price_subscription FLOAT,
+    name_subscription VARCHAR(100) NOT NULL,
+    price_subscription FLOAT NOT NULL,
     description TEXT,
     duration_months INT NOT NULL DEFAULT 12,
     max_residents INT DEFAULT 50,
@@ -25,24 +28,27 @@ CREATE TABLE IF NOT EXISTS subscription (
     is_active TINYINT DEFAULT 1
 );
 
+-- 2) Admin table
 CREATE TABLE IF NOT EXISTS admin (
     id_admin INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100),
-    email VARCHAR(100),
-    password VARCHAR(255)
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL
 );
 
+-- 3) Members table
 CREATE TABLE IF NOT EXISTS member (
     id_member INT AUTO_INCREMENT PRIMARY KEY,
-    full_name VARCHAR(100),
-    email VARCHAR(100),
-    password VARCHAR(255),
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
     phone VARCHAR(20),
     role INT,
     status VARCHAR(50),
     date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 4) Admin-Member-Subscription linking table
 CREATE TABLE IF NOT EXISTS admin_member_subscription (
     id_admin INT NOT NULL,
     id_member INT NOT NULL,
@@ -52,6 +58,7 @@ CREATE TABLE IF NOT EXISTS admin_member_subscription (
     PRIMARY KEY (id_admin, id_member, id_subscription)
 );
 
+-- 5) Admin-Member link table
 CREATE TABLE IF NOT EXISTS admin_member_link (
     id_admin INT NOT NULL,
     id_member INT NOT NULL,
@@ -59,40 +66,46 @@ CREATE TABLE IF NOT EXISTS admin_member_link (
     PRIMARY KEY (id_admin, id_member)
 );
 
+-- 6) Member messages table
 CREATE TABLE IF NOT EXISTS member_messages (
+    id_message INT AUTO_INCREMENT PRIMARY KEY,
     id_sender INT NOT NULL,
     id_receiver INT NOT NULL,
-    date_message DATETIME,
-    PRIMARY KEY (id_sender, id_receiver)
+    date_message DATETIME
 );
 
+-- 7) Member payments table
 CREATE TABLE IF NOT EXISTS member_payments (
+    id_payment INT AUTO_INCREMENT PRIMARY KEY,
     id_payer INT NOT NULL,
     id_receiver INT NOT NULL,
     date_payment DATETIME,
-    month_paid DATE,
-    PRIMARY KEY (id_payer, id_receiver)
+    month_paid DATE
 );
 
+-- 8) Member announcements table
 CREATE TABLE IF NOT EXISTS member_announcements (
+    id_announcement INT AUTO_INCREMENT PRIMARY KEY,
     id_poster INT NOT NULL,
     id_receiver INT NOT NULL,
-    date_announcement DATETIME,
-    PRIMARY KEY (id_poster, id_receiver)
+    date_announcement DATETIME
 );
 
+-- 9) Member notifications table
 CREATE TABLE IF NOT EXISTS member_notifications (
+    id_notification INT AUTO_INCREMENT PRIMARY KEY,
     id_sender INT NOT NULL,
     id_receiver INT NOT NULL,
-    date_notification DATETIME,
-    PRIMARY KEY (id_sender, id_receiver)
+    date_notification DATETIME
 );
 
+-- 10) Cities table
 CREATE TABLE IF NOT EXISTS city (
     id_city INT AUTO_INCREMENT PRIMARY KEY,
-    city_name VARCHAR(100)
+    city_name VARCHAR(100) NOT NULL UNIQUE
 );
 
+-- 11) Residences table
 CREATE TABLE IF NOT EXISTS residence (
     id_residence INT AUTO_INCREMENT PRIMARY KEY,
     id_city INT NOT NULL,
@@ -100,6 +113,7 @@ CREATE TABLE IF NOT EXISTS residence (
     address VARCHAR(255)
 );
 
+-- 12) Apartments table
 CREATE TABLE IF NOT EXISTS apartment (
     id_apartment INT AUTO_INCREMENT PRIMARY KEY,
     id_residence INT NOT NULL,
@@ -109,7 +123,16 @@ CREATE TABLE IF NOT EXISTS apartment (
     number INT
 );
 
--- Constraints
+ALTER TABLE member_announcements
+ADD COLUMN title VARCHAR(255),
+ADD COLUMN content TEXT,
+ADD COLUMN Priority text(10);
+
+ALTER TABLE member_messages ADD COLUMN subject VARCHAR(255);
+ALTER TABLE member_messages ADD COLUMN content TEXT;
+
+
+-- Foreign key constraints
 ALTER TABLE admin_member_subscription
     ADD CONSTRAINT fk_admin_subscription FOREIGN KEY (id_subscription)
     REFERENCES subscription (id_subscription)
@@ -190,7 +213,7 @@ ALTER TABLE residence
     REFERENCES city (id_city)
     ON DELETE RESTRICT ON UPDATE RESTRICT;
 
--- Insert sample subscriptions
+-- Insert example subscription data
 INSERT INTO subscription (name_subscription, price_subscription, description, duration_months, max_residents, max_apartments)
 VALUES 
 ('Forfait Basique', 50, 'Parfait pour les petits immeubles', 12, 20, 20),
@@ -199,21 +222,23 @@ VALUES
 
 SQL;
 
-$conn->exec($sql);
+    // Execute the full SQL schema
+    $conn->exec($sql);
 
+    // Create default admin user
+    $name = "admin";
+    $email = "admin@syndic.ma";
+    $plain_password = "admin123"; // example password
+    $hashed_password = password_hash($plain_password, PASSWORD_DEFAULT);
 
-//creat admin
-$name = "admin";
-$email = "admin@syndic.ma";
-$plain_password = "admin123"; 
-$hashed_password = password_hash($plain_password, PASSWORD_DEFAULT);
+    $stmt = $conn->prepare("INSERT INTO admin (name, email, password) VALUES (?, ?, ?)");
+    $stmt->execute([$name, $email, $hashed_password]);
 
-$stmt = $conn->prepare("INSERT INTO admin (name, email, password) VALUES (?, ?, ?)");
-$stmt->execute([$name, $email, $hashed_password]);
-
-
-    echo "✅ Base de données et tables créées avec succès.";
+    echo "✅ Database and tables created successfully.";
 } catch (PDOException $e) {
-    die("❌ Erreur: " . $e->getMessage());
+    die("❌ Error: " . $e->getMessage());
 }
 ?>
+
+
+
