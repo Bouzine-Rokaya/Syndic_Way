@@ -18,30 +18,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Add animation on scroll
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver(function(entries) {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-            }
-        });
-    }, observerOptions);
-
-    // Observe feature cards and pricing cards
-    const animatedElements = document.querySelectorAll('.feature-card, .pricing-card, .faq-item');
-    
-    animatedElements.forEach(el => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(20px)';
-        el.style.transition = 'all 0.6s ease';
-        observer.observe(el);
-    });
 
     // Mobile menu toggle (if needed)
     const navToggle = document.querySelector('.nav-toggle');
@@ -109,20 +85,5 @@ function showFieldError(field, message) {
     field.style.borderColor = '#dc3545';
 }
 
-// Add some interactive effects
-function addHoverEffects() {
-    const cards = document.querySelectorAll('.feature-card, .pricing-card');
-    
-    cards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-10px) scale(1.02)';
-        });
-        
-        card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0) scale(1)';
-        });
-    });
-}
 
-// Initialize hover effects after DOM is loaded
-setTimeout(addHoverEffects, 1000);
+

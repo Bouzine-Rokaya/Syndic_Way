@@ -1,0 +1,181 @@
+/* Reset and base styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: white;
+}
+
+.container {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+/* Hero section */
+.hero {
+  height: 515px;
+  background-image: url('../assets/image.png');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+.yellow , .yellow-light{
+  color: #FFCB32;
+}
+
+.hero-content {
+  position: absolute;
+  bottom: 40px;
+  left: 40px;
+}
+
+.hero-title {
+  font-family: 'Karantina', sans-serif;
+  font-size: 126px;
+  line-height: 1;
+}
+
+/* Services section */
+.services {
+  padding: 64px 16px;
+  max-width: 1256px;
+  margin: 0 auto;
+}
+
+.services-header {
+  text-align: center;
+}
+
+.badge {
+  display: inline-block;
+  background: #141414;
+  color: white;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+}
+
+.services h2 {
+  margin-top: 68px;
+  font-size: 64px;
+  letter-spacing: -1.28px;
+  line-height: 64px;
+  text-transform: capitalize;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 48px;
+}
+
+.card {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0px 12px 16px rgba(20, 20, 20, 0.1);
+}
+
+.image-card {
+  height: 341px;
+}
+
+.image-card.wide {
+  grid-column: span 2;
+}
+
+.image-card img {
+  width: 100%;
+  height: 110%;
+  object-fit: cover;
+}
+
+.contact-card {
+  padding: 32px;
+  height: 341px;
+  position: relative;
+  background: white;
+}
+
+.contact-card .icon {
+  width: 67px;
+  height: 67px;
+}
+
+.vector-icon {
+  position: relative;
+  width: 67px;
+  height: 67px;
+}
+
+.vector-bg {
+  width: 100%;
+  height: 100%;
+}
+
+.vector-inner {
+  position: absolute;
+  width: 66px;
+  height: 68px;
+  top: 5px;
+  left: 3px;
+}
+
+.contact-card h3 {
+  margin-top: 62px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 32px;
+  color: #141414;
+}
+
+.contact-card p {
+  margin-top: 18px;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 22px;
+  color: #141414;
+}
+
+.contact-link {
+  position: absolute;
+  bottom: 32px;
+  left: 32px;
+  color: #141414;
+  text-decoration: underline;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 22px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .services-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .image-card.wide {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .services-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -304,65 +304,32 @@ $page_title = "Paramètres - Syndic Way";
 </head>
 
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="nav-brand">
-            <h2><i class="fas fa-shield-alt"></i> Admin Panel</h2>
-        </div>
-        <div class="nav-user">
-            <span><i class="fas fa-user"></i> <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Admin'); ?></span>
-            <a href="../public/logout.php" class="btn btn-logout">
-                <i class="fas fa-sign-out-alt"></i> Déconnexion
-            </a>
-        </div>
-    </nav>
-
-    <div class="dashboard-container">
+    <div class="container">
         <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h3>Navigation</h3>
-            </div>
-            <nav class="sidebar-nav">
-                <ul>
-                    <li>
-                        <a href="dashboard.php">
-                            <i class="fas fa-tachometer-alt"></i> Tableau de bord
-                        </a>
-                    </li>
-                    <li>
-                        <a href="subscriptions.php">
-                            <i class="fas fa-tags"></i> Abonnements
-                        </a>
-                    </li>
-                    <li>
-                        <a href="syndic-accounts.php">
-                            <i class="fas fa-building"></i> Comptes Syndic
-                        </a>
-                    </li>
-                    <li>
-                        <a href="users.php">
-                            <i class="fas fa-users"></i> Utilisateurs
-                        </a>
-                    </li>
-                    <li>
-                        <a href="purchases.php">
-                            <i class="fas fa-shopping-cart"></i> Achats
-                        </a>
-                    </li>
-                    <li>
-                        <a href="reports.php">
-                            <i class="fas fa-chart-bar"></i> Rapports
-                        </a>
-                    </li>
-                    <li class="active">
-                        <a href="settings.php">
-                            <i class="fas fa-cog"></i> Paramètres
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </aside>
+        <?php require_once __DIR__ ."/../includes/sidebar_admin.php"?>
+
+
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Alert Messages -->
+             <?php if (isset($_SESSION['success'])): ?>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i>
+                    <?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
+                </div>
+            <?php endif; ?>
+
+            <?php if (isset($_SESSION['error'])): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Header -->
+            <?php require_once __DIR__ ."/../includes/navigation.php"?>
+
 
         <!-- Main Content -->
         <main class="main-content">
@@ -376,20 +343,7 @@ $page_title = "Paramètres - Syndic Way";
                 </button>
             </div>
 
-            <!-- Alert Messages -->
-            <?php if (isset($_SESSION['success'])): ?>
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle"></i>
-                    <?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
-                </div>
-            <?php endif; ?>
-
-            <?php if (isset($_SESSION['error'])): ?>
-                <div class="alert alert-error">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <?php echo htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
-                </div>
-            <?php endif; ?>
+           
 
             <!-- Settings Tabs -->
             <div class="settings-tabs">

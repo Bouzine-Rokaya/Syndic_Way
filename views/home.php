@@ -11,29 +11,8 @@
 </head>
 <body>
     <!-- Header -->
-    <header class="header">
-        <nav class="landing-nav">
-            <div class="container">
-                <div class="nav-brand">
-                    <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/syndic-way-3l3Tx2e1PrjISxRnMx9Sk4ut1e4AQ1.png" alt="Syndic-Way" class="logo-img">
-                    <div class="hamburger">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-            </div>
-                <div class="nav-links">
-                    <a href="?page=home">Accueil</a>
-                    <a href="?page=subscriptions">Tarification</a>
-                    <a href="#">À propos</a>
-                    <a href="#">Nos services</a>
-                    <a href="#">Contact</a>
-                </div>
-                <a href="login.php" class="btn-login">Connexion</a>
-            </div>
-            
-        </nav>
-    </header>
+    <?php require_once __DIR__ . '/../public/header.php'; ?>
+
 
     <!-- Hero Section -->
     <section class="hero">
@@ -202,34 +181,9 @@
     </section>
 
     <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-logo">
-                    <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/syndic-way-3l3Tx2e1PrjISxRnMx9Sk4ut1e4AQ1.png" alt="Syndic-Way">
-                </div>
-                <nav class="footer-nav">
-                    <ul>
-                        <li><a href="#accueil">Accueil</a></li>
-                        <li><a href="#apropos">À propos</a></li>
-                        <li><a href="#services">Nos services</a></li>
-                        <li><a href="#contact">Contact</a></li>
-                    </ul>
-                </nav>
-                <div class="footer-buttons">
-                    <button class="footer-btn">Connexion</button>
-                    <button class="footer-btn secondary">Créer un compte</button>
-                </div>
-            </div>
-            <div class="social-links">
-                <a href="#" class="social-link">📘</a>
-                <a href="#" class="social-link">📷</a>
-                <a href="#" class="social-link">🐦</a>
-                <a href="#" class="social-link">💼</a>
-            </div>
-        </div>
-    </footer>
+    <?php require_once __DIR__ . '/../public/footer.php'; ?>
 
-    <script src="script.js"></script>
+    <script src="http://localhost/syndicplatform/js/sections/subscriptions.js"></script>
+
 </body>
 </html>

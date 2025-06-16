@@ -1,7 +1,7 @@
 <?php
 $page = $_GET['page'] ?? 'home';
 
-switch($page) {
+switch ($page) {
     case 'home':
         include __DIR__ . '/../views/home.php';
         break;
@@ -13,11 +13,16 @@ switch($page) {
         break;
     case 'purchase-success':
         require_once __DIR__ . '/../views/purchase-success.php';
-       
         break;
+    case 'service':
+    require_once __DIR__ . '/../views/service.php';
+    break;
+    case 'contact':
+    require_once __DIR__ . '/../views/contact.php';
+    break;
     // case 'purchase-success':
     //     require_once __DIR__ . '/../views/purchase-success.php';
-      
+
     //     break;
     default:
         echo 'hello';
