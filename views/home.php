@@ -97,64 +97,7 @@
         </div>
     </section>
 
-    <!-- Testimonials Section -->
-    <section class="testimonials">
-        <div class="container">
-            <h2>Pourquoi nos clients nous adorent ?</h2>
-            <div class="testimonial-buttons">
-                <button class="testimonial-btn active">Syndic de copropriété</button>
-                <button class="testimonial-btn">Gestion locative</button>
-            </div>
-            
-            <div class="testimonials-slider">
-                <div class="testimonial-card active">
-                    <div class="quote">"</div>
-                    <p>Service excellent et équipe très professionnelle. La gestion de notre copropriété n'a jamais été aussi simple.</p>
-                    <div class="testimonial-author">
-                        <img src="/placeholder.svg?height=40&width=40" alt="Youssef M.">
-                        <div>
-                            <strong>Youssef M.</strong>
-                            <div class="stars">★★★★★</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="testimonial-card">
-                    <div class="quote">"</div>
-                    <p>Interface intuitive et support client réactif. Je recommande vivement Syndic-Way.</p>
-                    <div class="testimonial-author">
-                        <img src="/placeholder.svg?height=40&width=40" alt="Sarah L.">
-                        <div>
-                            <strong>Sarah L.</strong>
-                            <div class="stars">★★★★★</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="testimonial-card">
-                    <div class="quote">"</div>
-                    <p>Transparence totale et gestion efficace. Exactement ce que nous cherchions.</p>
-                    <div class="testimonial-author">
-                        <img src="/placeholder.svg?height=40&width=40" alt="Ahmed K.">
-                        <div>
-                            <strong>Ahmed K.</strong>
-                            <div class="stars">★★★★★</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="slider-controls">
-                <button class="slider-btn prev">‹</button>
-                <div class="slider-dots">
-                    <span class="dot active"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                </div>
-                <button class="slider-btn next">›</button>
-            </div>
-        </div>
-    </section>
+ 
 
     <!-- Service Promise Section -->
     <section class="service-promise">
@@ -184,6 +127,7 @@
     <?php require_once __DIR__ . '/../public/footer.php'; ?>
 
     <script src="http://localhost/syndicplatform/js/sections/subscriptions.js"></script>
+
 
 </body>
 </html>

@@ -787,7 +787,6 @@ $page_title = "Dashboard Syndic - " . ($building_info['name'] ?? 'Syndic Way');
                             <?php if (empty($resident_data)): ?>
                             <tr class="table-row">
                                 <td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">
-                                    <i class="fas fa-users" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
                                     <div>Aucun résident trouvé</div>
                                     <div style="font-size: 12px; margin-top: 8px;">Ajoutez vos premiers résidents pour commencer</div>
                                 </td>
@@ -915,7 +914,6 @@ $page_title = "Dashboard Syndic - " . ($building_info['name'] ?? 'Syndic Way');
 
                     <?php if (empty($recent_activities)): ?>
                         <div style="text-align: center; padding: 40px; color: #64748b;">
-                            <i class="fas fa-clock" style="font-size: 32px; margin-bottom: 12px; opacity: 0.3;"></i>
                             <div style="font-size: 14px;">Aucune activité récente</div>
                             <div style="font-size: 12px; margin-top: 4px;">Les nouvelles activités apparaîtront ici</div>
                         </div>
@@ -958,42 +956,7 @@ $page_title = "Dashboard Syndic - " . ($building_info['name'] ?? 'Syndic Way');
             document.querySelector('.activity-panel').style.display = 'none';
             document.querySelector('.main-panel').style.marginRight = '0';
         });
-
-        // Quick card clicks
-        document.querySelectorAll('.quick-card').forEach(card => {
-            card.addEventListener('click', function() {
-                const cardType = this.classList[1];
-                console.log(`Navigating to ${cardType} section`);
-                
-                // Add actual navigation logic here
-                switch(cardType) {
-                    case 'residents':
-                        window.location.href = 'residents.php';
-                        break;
-                    case 'apartments':
-                        window.location.href = 'apartments.php';
-                        break;
-                    case 'payments':
-                        window.location.href = 'payments.php';
-                        break;
-                    case 'messages':
-                        window.location.href = 'messages.php';
-                        break;
-                }
-            });
-        });
-
-        // Table row hover effects
-        document.querySelectorAll('.table-row').forEach(row => {
-            row.addEventListener('mouseenter', function() {
-                this.style.backgroundColor = '#f8fafc';
-            });
-            
-            row.addEventListener('mouseleave', function() {
-                this.style.backgroundColor = '';
-            });
-        });
-
+        
        
 
         // Storage animation on load

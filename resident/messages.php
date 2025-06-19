@@ -14,24 +14,7 @@ $current_user = [
     'email' => $_SESSION['user_email'] ?? ''
 ];
 
-// First, create the messages table if it doesn't exist
-try {
-    $conn->exec("
-        CREATE TABLE IF NOT EXISTS member_messages (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            id_sender INT NOT NULL,
-            id_receiver INT NOT NULL,
-            subject VARCHAR(255) DEFAULT NULL,
-            content TEXT NOT NULL,
-            date_message DATETIME NOT NULL,
-            is_read TINYINT DEFAULT 0,
-            FOREIGN KEY (id_sender) REFERENCES member(id_member),
-            FOREIGN KEY (id_receiver) REFERENCES member(id_member)
-        )
-    ");
-} catch (PDOException $e) {
-    error_log("Error creating messages table: " . $e->getMessage());
-}
+
 
 // Get resident information
 try {

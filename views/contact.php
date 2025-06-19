@@ -19,7 +19,6 @@
 <body>
   <div class="container">
     <!-- Header Section -->
-    <header class="header">
     <?php require_once __DIR__ . '/../public/header.php'; ?>
 
 
