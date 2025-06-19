@@ -7,7 +7,6 @@
         <div class="nav-links">
             <a href="?page=home">Accueil</a>
             <a href="?page=subscriptions">Tarification</a>
-            <a href="?page=aboutUs">À propos</a>
             <a href="?page=service">Nos services</a>
             <a href="?page=contact">Contact</a>
         </div>
