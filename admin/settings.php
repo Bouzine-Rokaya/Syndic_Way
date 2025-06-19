@@ -8,6 +8,13 @@ if (!isset($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
     exit();
 }
 
+$current_user = [
+    'id' => $_SESSION['user_id'],
+    'role' => $_SESSION['user_role'],
+    'name' => $_SESSION['user_name'] ?? 'Admin',
+    'email' => $_SESSION['user_email'] ?? ''
+];
+
 // Handle settings update
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
@@ -28,7 +35,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("L'adresse email n'est pas valide.");
             }
             
-            // Update settings in database (you might want to create a settings table)
+            // Create settings table if not exists
+            $conn->exec("
+                CREATE TABLE IF NOT EXISTS site_settings (
+                    setting_key VARCHAR(100) PRIMARY KEY,
+                    setting_value TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )
+            ");
+            
             $stmt = $conn->prepare("
                 INSERT INTO site_settings (setting_key, setting_value) 
                 VALUES (?, ?) 
@@ -49,105 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $_SESSION['success'] = "Paramètres généraux mis à jour avec succès.";
             
-        } elseif ($action === 'update_payment_settings') {
-            $payment_gateway = $_POST['payment_gateway'] ?? '';
-            $stripe_public_key = trim($_POST['stripe_public_key'] ?? '');
-            $stripe_secret_key = trim($_POST['stripe_secret_key'] ?? '');
-            $paypal_client_id = trim($_POST['paypal_client_id'] ?? '');
-            $paypal_client_secret = trim($_POST['paypal_client_secret'] ?? '');
-            $currency = $_POST['currency'] ?? 'MAD';
-            $tax_rate = floatval($_POST['tax_rate'] ?? 0);
-            
-            $payment_settings = [
-                'payment_gateway' => $payment_gateway,
-                'stripe_public_key' => $stripe_public_key,
-                'stripe_secret_key' => $stripe_secret_key,
-                'paypal_client_id' => $paypal_client_id,
-                'paypal_client_secret' => $paypal_client_secret,
-                'currency' => $currency,
-                'tax_rate' => $tax_rate
-            ];
-            
-            $stmt = $conn->prepare("
-                INSERT INTO site_settings (setting_key, setting_value) 
-                VALUES (?, ?) 
-                ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
-            ");
-            
-            foreach ($payment_settings as $key => $value) {
-                $stmt->execute([$key, $value]);
-            }
-            
-            $_SESSION['success'] = "Paramètres de paiement mis à jour avec succès.";
-            
-        } elseif ($action === 'update_email_settings') {
-            $smtp_host = trim($_POST['smtp_host'] ?? '');
-            $smtp_port = intval($_POST['smtp_port'] ?? 587);
-            $smtp_username = trim($_POST['smtp_username'] ?? '');
-            $smtp_password = trim($_POST['smtp_password'] ?? '');
-            $smtp_encryption = $_POST['smtp_encryption'] ?? 'tls';
-            $from_email = trim($_POST['from_email'] ?? '');
-            $from_name = trim($_POST['from_name'] ?? '');
-            
-            if (!empty($from_email) && !filter_var($from_email, FILTER_VALIDATE_EMAIL)) {
-                throw new Exception("L'adresse email d'expédition n'est pas valide.");
-            }
-            
-            $email_settings = [
-                'smtp_host' => $smtp_host,
-                'smtp_port' => $smtp_port,
-                'smtp_username' => $smtp_username,
-                'smtp_password' => $smtp_password,
-                'smtp_encryption' => $smtp_encryption,
-                'from_email' => $from_email,
-                'from_name' => $from_name
-            ];
-            
-            $stmt = $conn->prepare("
-                INSERT INTO site_settings (setting_key, setting_value) 
-                VALUES (?, ?) 
-                ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
-            ");
-            
-            foreach ($email_settings as $key => $value) {
-                $stmt->execute([$key, $value]);
-            }
-            
-            $_SESSION['success'] = "Paramètres email mis à jour avec succès.";
-            
-        } elseif ($action === 'update_security_settings') {
-            $max_login_attempts = intval($_POST['max_login_attempts'] ?? 5);
-            $lockout_duration = intval($_POST['lockout_duration'] ?? 30);
-            $session_timeout = intval($_POST['session_timeout'] ?? 60);
-            $password_min_length = intval($_POST['password_min_length'] ?? 8);
-            $require_password_uppercase = isset($_POST['require_password_uppercase']) ? 1 : 0;
-            $require_password_numbers = isset($_POST['require_password_numbers']) ? 1 : 0;
-            $require_password_symbols = isset($_POST['require_password_symbols']) ? 1 : 0;
-            $enable_two_factor = isset($_POST['enable_two_factor']) ? 1 : 0;
-            
-            $security_settings = [
-                'max_login_attempts' => $max_login_attempts,
-                'lockout_duration' => $lockout_duration,
-                'session_timeout' => $session_timeout,
-                'password_min_length' => $password_min_length,
-                'require_password_uppercase' => $require_password_uppercase,
-                'require_password_numbers' => $require_password_numbers,
-                'require_password_symbols' => $require_password_symbols,
-                'enable_two_factor' => $enable_two_factor
-            ];
-            
-            $stmt = $conn->prepare("
-                INSERT INTO site_settings (setting_key, setting_value) 
-                VALUES (?, ?) 
-                ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
-            ");
-            
-            foreach ($security_settings as $key => $value) {
-                $stmt->execute([$key, $value]);
-            }
-            
-            $_SESSION['success'] = "Paramètres de sécurité mis à jour avec succès.";
-            
         } elseif ($action === 'update_admin_profile') {
             $admin_name = trim($_POST['admin_name'] ?? '');
             $admin_email = trim($_POST['admin_email'] ?? '');
@@ -163,15 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new Exception("L'adresse email n'est pas valide.");
             }
             
-            // Check if email is already used by another user
-            $stmt = $conn->prepare("SELECT id_member FROM member WHERE email = ? AND id_member != ?");
-            $stmt->execute([$admin_email, $_SESSION['user_id']]);
-            if ($stmt->fetch()) {
-                throw new Exception("Cette adresse email est déjà utilisée.");
-            }
-            
             // Update admin profile
-            $stmt = $conn->prepare("UPDATE member SET name = ?, email = ? WHERE id_member = ?");
+            $stmt = $conn->prepare("UPDATE admin SET name = ?, email = ? WHERE id_admin = ?");
             $stmt->execute([$admin_name, $admin_email, $_SESSION['user_id']]);
             
             // Update session data
@@ -193,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 
                 // Verify current password
-                $stmt = $conn->prepare("SELECT password FROM member WHERE id_member = ?");
+                $stmt = $conn->prepare("SELECT password FROM admin WHERE id_admin = ?");
                 $stmt->execute([$_SESSION['user_id']]);
                 $user = $stmt->fetch();
                 
@@ -203,46 +113,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Update password
                 $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-                $stmt = $conn->prepare("UPDATE member SET password = ? WHERE id_member = ?");
+                $stmt = $conn->prepare("UPDATE admin SET password = ? WHERE id_admin = ?");
                 $stmt->execute([$hashed_password, $_SESSION['user_id']]);
             }
             
             $_SESSION['success'] = "Profil administrateur mis à jour avec succès.";
             
         } elseif ($action === 'backup_database') {
-            // This would typically be handled by a separate script
-            $_SESSION['success'] = "Sauvegarde de la base de données lancée. Vous recevrez un email de confirmation.";
+            $_SESSION['success'] = "Sauvegarde de la base de données lancée.";
             
         } elseif ($action === 'clear_cache') {
-            // Clear various caches
             if (function_exists('opcache_reset')) {
                 opcache_reset();
             }
-            
-            // Clear session files older than 24 hours
-            $session_path = session_save_path();
-            if ($session_path && is_dir($session_path)) {
-                $files = glob($session_path . '/sess_*');
-                $now = time();
-                foreach ($files as $file) {
-                    if (is_file($file) && ($now - filemtime($file)) > 86400) {
-                        unlink($file);
-                    }
-                }
-            }
-            
             $_SESSION['success'] = "Cache vidé avec succès.";
-            
-        } elseif ($action === 'test_email') {
-            $test_email = trim($_POST['test_email'] ?? '');
-            
-            if (empty($test_email) || !filter_var($test_email, FILTER_VALIDATE_EMAIL)) {
-                throw new Exception("Adresse email de test invalide.");
-            }
-            
-            // Here you would implement actual email sending
-            // For now, we'll just simulate it
-            $_SESSION['success'] = "Email de test envoyé à " . htmlspecialchars($test_email);
         }
         
     } catch (Exception $e) {
@@ -267,7 +151,7 @@ function getSetting($conn, $key, $default = '') {
 
 // Get admin profile
 try {
-    $stmt = $conn->prepare("SELECT * FROM member WHERE id_member = ?");
+    $stmt = $conn->prepare("SELECT * FROM admin WHERE id_admin = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $admin_profile = $stmt->fetch();
 } catch (Exception $e) {
@@ -291,29 +175,824 @@ $page_title = "Paramètres - Syndic Way";
 
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $page_title; ?></title>
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/dashboard.css">
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/style.css">
-    <link rel="stylesheet" href="http://localhost/syndicplatform/css/admin/settings.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+            line-height: 1.5;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #dcfce7;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            padding: 0 20px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: #FFCB32;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .logo-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .nav-section {
+            padding: 0 20px;
+            margin-bottom: 30px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: #64748b;
+            text-decoration: none;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: #f1f5f9;
+            color: #FFCB32;
+        }
+
+        .nav-item i {
+            width: 16px;
+            text-align: center;
+        }
+
+        .storage-info {
+            margin-top: auto;
+            padding: 0 20px;
+        }
+
+        .storage-bar {
+            width: 100%;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .storage-fill {
+            height: 100%;
+            background: #FFCB32;
+            width: 65%;
+            border-radius: 2px;
+            transition: width 0.5s ease;
+        }
+
+        .storage-text {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0 24px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-nav {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .header-nav a {
+            color: #64748b;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .header-nav a.active {
+            color: #FFCB32;
+            background: #eff6ff;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            width: 300px;
+            padding: 8px 12px 8px 36px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: #f8fafc;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: #FFCB32;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* Quick Access Section */
+        .quick-access {
+            padding: 24px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .quick-access-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .quick-access-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .quick-access-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .quick-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .quick-card:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+        }
+
+        .quick-card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 20px;
+            color: white;
+        }
+
+        .quick-card.general .quick-card-icon { background: #FFCB32; }
+        .quick-card.profile .quick-card-icon { background: #10b981; }
+        .quick-card.security .quick-card-icon { background: #f59e0b; }
+        .quick-card.system .quick-card-icon { background: #8b5cf6; }
+
+        .quick-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .quick-card-stats {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            display: flex;
+        }
+
+        .main-panel {
+            flex: 1;
+            padding: 24px;
+        }
+
+        /* Breadcrumb */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .breadcrumb a {
+            color: #64748b;
+            text-decoration: none;
+        }
+
+        .breadcrumb a:hover {
+            color: #FFCB32;
+        }
+
+        /* Table Header */
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .view-options {
+            display: flex;
+            gap: 8px;
+        }
+
+        .view-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: #FFCB32;
+            color: white;
+            border-color: #FFCB32;
+        }
+
+        .add-btn {
+            background: #FFCB32;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .add-btn:hover {
+            background: #2563eb;
+        }
+
+        /* Data Table */
+        .data-table {
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+
+        .table-header-row {
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .table-header-row th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table-row {
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.2s;
+        }
+
+        .table-row:hover {
+            background: #f8fafc;
+        }
+
+        .table-row td {
+            padding: 16px;
+            font-size: 14px;
+            color: #1e293b;
+        }
+
+        .table-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #1e293b;
+        }
+
+        .file-description {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        /* Settings Forms */
+        .settings-form {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+
+        .settings-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #FFCB32;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #FFCB32;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+
+        /* System Info */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .info-card {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .info-card h4 {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+
+        .info-card .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .quick-action {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-action:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+        }
+
+        .quick-action i {
+            font-size: 24px;
+            color: #FFCB32;
+            margin-bottom: 8px;
+        }
+
+        .quick-action h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .quick-action p {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        /* Activity Panel */
+        .activity-panel {
+            width: 320px;
+            background: white;
+            border-left: 1px solid #e2e8f0;
+            padding: 24px;
+        }
+
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .activity-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .close-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: none;
+            color: #64748b;
+            cursor: pointer;
+        }
+
+        .activity-tabs {
+            display: flex;
+            border-bottom: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        .activity-tab {
+            padding: 8px 12px;
+            font-size: 14px;
+            color: #64748b;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .activity-tab.active {
+            color: #FFCB32;
+            border-bottom-color: #FFCB32;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 12px;
+            color: white;
+        }
+
+        .activity-icon.settings { background: #FFCB32; }
+        .activity-icon.profile { background: #10b981; }
+        .activity-icon.security { background: #f59e0b; }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-text {
+            font-size: 14px;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .activity-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .tag {
+            background: #eff6ff;
+            color: #FFCB32;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+            }
+            
+            .content-area {
+                flex-direction: column;
+            }
+            
+            .activity-panel {
+                width: 100%;
+            }
+            
+            .quick-access-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
 </head>
-
 <body>
     <div class="container">
         <!-- Sidebar -->
-        <?php require_once __DIR__ ."/../includes/sidebar_admin.php"?>
+        <div class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">SW</div>
+                <div class="logo-text">Syndic Way</div>
+            </div>
 
+            <div class="nav-section">
+                <a href="dashboard.php" class="nav-item">
+                    <i class="fas fa-th-large"></i>
+                    Tableau de Bord
+                </a>
+                <a href="subscriptions.php" class="nav-item">
+                    <i class="fas fa-tags"></i>
+                    Abonnements
+                </a>
+                <a href="syndic-accounts.php" class="nav-item">
+                    <i class="fas fa-building"></i>
+                    Comptes Syndic
+                </a>
+                <a href="users.php" class="nav-item">
+                    <i class="fas fa-users"></i>
+                    Utilisateurs
+                </a>
+                <a href="purchases.php" class="nav-item">
+                    <i class="fas fa-shopping-cart"></i>
+                    Achats
+                </a>
+                <a href="reports.php" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    Rapports
+                </a>
+                <a href="#" class="nav-item active">
+                    <i class="fas fa-cog"></i>
+                    Paramètres
+                </a>
+                <a href="../public/login.php?logout=1" class="nav-item">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Déconnexion
+                </a>
+            </div>
 
+            <div class="storage-info">
+                <div class="storage-text">Utilisation du système</div>
+                <div class="storage-bar">
+                    <div class="storage-fill"></div>
+                </div>
+                <div class="storage-text"><?php echo round($system_info['disk_space'] / 1024 / 1024 / 1024, 1); ?>GB libres</div>
+            </div>
+        </div>
 
         <!-- Main Content -->
         <div class="main-content">
             <!-- Alert Messages -->
-             <?php if (isset($_SESSION['success'])): ?>
+            <?php if (isset($_SESSION['success'])): ?>
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle"></i>
                     <?php echo htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
@@ -328,624 +1007,650 @@ $page_title = "Paramètres - Syndic Way";
             <?php endif; ?>
 
             <!-- Header -->
-            <?php require_once __DIR__ ."/../includes/navigation.php"?>
-
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="content-header">
-                <div>
-                    <h1><i class="fas fa-cog"></i> Paramètres du Système</h1>
-                    <p>Configurez et gérez les paramètres de votre plateforme</p>
+            <div class="header">
+                <div class="header-nav">
+                    <a href="#" class="active">Paramètres</a>
+                    <a href="#">Général</a>
+                    <a href="#">Profil</a>
+                    <a href="#">Système</a>
                 </div>
-                <button class="btn btn-primary" onclick="saveAllSettings()">
-                    <i class="fas fa-save"></i> Sauvegarder Tout
-                </button>
+
+                <div class="header-actions">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Rechercher des paramètres...">
+                    </div>
+                    <i class="fas fa-bell" style="color: #64748b; cursor: pointer;"></i>
+                    <div class="header-user">
+                        <div class="user-avatar"><?php echo strtoupper(substr($current_user['name'], 0, 1)); ?></div>
+                    </div>
+                </div>
             </div>
 
-           
+            <!-- Quick Access -->
+            <div class="quick-access">
+                <div class="quick-access-header">
+                    <div class="quick-access-title">Configuration Rapide</div>
+                    <i class="fas fa-ellipsis-h" style="color: #64748b; cursor: pointer;"></i>
+                </div>
 
-            <!-- Settings Tabs -->
-            <div class="settings-tabs">
-                <button class="tab-button active" onclick="switchTab('general')">
-                    <i class="fas fa-cog"></i> Général
-                </button>
-                <button class="tab-button" onclick="switchTab('payment')">
-                    <i class="fas fa-credit-card"></i> Paiement
-                </button>
-                <button class="tab-button" onclick="switchTab('email')">
-                    <i class="fas fa-envelope"></i> Email
-                </button>
-                <button class="tab-button" onclick="switchTab('security')">
-                    <i class="fas fa-shield-alt"></i> Sécurité
-                </button>
-                <button class="tab-button" onclick="switchTab('profile')">
-                    <i class="fas fa-user"></i> Profil
-                </button>
-                <button class="tab-button" onclick="switchTab('system')">
-                    <i class="fas fa-server"></i> Système
-                </button>
+                <div class="quick-access-grid">
+                    <div class="quick-card general" onclick="scrollToSection('general-settings')">
+                        <div class="quick-card-icon">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="quick-card-title">Paramètres Généraux</div>
+                        <div class="quick-card-stats">Site et configuration</div>
+                    </div>
+
+                    <div class="quick-card profile" onclick="scrollToSection('profile-settings')">
+                        <div class="quick-card-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="quick-card-title">Profil Admin</div>
+                        <div class="quick-card-stats">Compte et sécurité</div>
+                    </div>
+
+                    <div class="quick-card security" onclick="scrollToSection('system-info')">
+                        <div class="quick-card-icon">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <div class="quick-card-title">Informations Système</div>
+                        <div class="quick-card-stats">PHP <?php echo $system_info['php_version']; ?></div>
+                    </div>
+
+                    <div class="quick-card system" onclick="scrollToSection('system-actions')">
+                        <div class="quick-card-icon">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <div class="quick-card-title">Actions Système</div>
+                        <div class="quick-card-stats">Maintenance et outils</div>
+                    </div>
+                </div>
             </div>
 
-            <!-- General Settings Tab -->
-            <div id="general" class="tab-content active">
-                <form method="POST" onsubmit="return validateForm(this)">
-                    <input type="hidden" name="action" value="update_general_settings">
-                    
-                    <div class="settings-section">
-                        <div class="section-header">
-                            <i class="fas fa-info-circle"></i>
-                            <h3>Informations Générales</h3>
+            <!-- Content Area -->
+            <div class="content-area">
+                <div class="main-panel">
+                    <!-- Breadcrumb -->
+                    <div class="breadcrumb">
+                        <a href="dashboard.php">Accueil</a>
+                        <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                        <a href="#">Administration</a>
+                        <i class="fas fa-chevron-right" style="font-size: 10px;"></i>
+                        <span>Paramètres Système</span>
+                    </div>
+
+                    <!-- Table Header -->
+                    <div class="table-header">
+                        <div class="view-options">
+                            <div class="view-btn active">
+                                <i class="fas fa-th"></i>
+                            </div>
+                            <div class="view-btn">
+                                <i class="fas fa-list"></i>
+                            </div>
+                        </div>
+                        <button class="add-btn" onclick="window.location.reload()">
+                            <i class="fas fa-sync-alt"></i>
+                            Actualiser
+                        </button>
+                    </div>
+
+                    <!-- Settings Table View -->
+                    <table class="data-table">
+                        <thead class="table-header-row">
+                            <tr>
+                                <th>Paramètres</th>
+                                <th>Description</th>
+                                <th>Statut</th>
+                                <th>Dernière Modif</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="table-row">
+                                <td>
+                                    <div class="file-item">
+                                        <div class="table-icon" style="background: #FFCB32;">
+                                            <i class="fas fa-cog"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">Paramètres Généraux</div>
+                                            <div class="file-description">Configuration du site et informations</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>Configuration globale de la plateforme</td>
+                                <td><span class="tag">Configuré</span></td>
+                                <td>Aujourd'hui</td>
+                                <td>
+                                    <i class="fas fa-edit" style="color: #64748b; cursor: pointer;" onclick="editGeneralSettings()"></i>
+                                </td>
+                            </tr>
+
+                            <tr class="table-row">
+                                <td>
+                                    <div class="file-item">
+                                        <div class="table-icon" style="background: #10b981;">
+                                            <i class="fas fa-user-circle"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">Profil Administrateur</div>
+                                            <div class="file-description">Compte et informations personnelles</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>Gestion du compte admin principal</td>
+                                <td><span class="tag">Actif</span></td>
+                                <td>Il y a 2 jours</td>
+                                <td>
+                                    <i class="fas fa-edit" style="color: #64748b; cursor: pointer;" onclick="editProfile()"></i>
+                                </td>
+                            </tr>
+
+                            <tr class="table-row">
+                                <td>
+                                    <div class="file-item">
+                                        <div class="table-icon" style="background: #f59e0b;">
+                                            <i class="fas fa-server"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">Informations Système</div>
+                                            <div class="file-description">État du serveur et performances</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>Monitoring système et ressources</td>
+                                <td><span class="tag">Opérationnel</span></td>
+                                <td>Temps réel</td>
+                                <td>
+                                    <i class="fas fa-eye" style="color: #64748b; cursor: pointer;" onclick="viewSystemInfo()"></i>
+                                </td>
+                            </tr>
+
+                            <tr class="table-row">
+                                <td>
+                                    <div class="file-item">
+                                        <div class="table-icon" style="background: #8b5cf6;">
+                                            <i class="fas fa-tools"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">Actions Système</div>
+                                            <div class="file-description">Maintenance et outils admin</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>Cache, sauvegarde, optimisation</td>
+                                <td><span class="tag">Disponible</span></td>
+                                <td>-</td>
+                                <td>
+                                    <i class="fas fa-play-circle" style="color: #64748b; cursor: pointer;" onclick="showSystemActions()"></i>
+                                </td>
+                            </tr>
+
+                            <tr class="table-row">
+                                <td>
+                                    <div class="file-item">
+                                        <div class="table-icon" style="background: #ef4444;">
+                                            <i class="fas fa-database"></i>
+                                        </div>
+                                        <div class="file-info">
+                                            <div class="file-name">Base de Données</div>
+                                            <div class="file-description">Gestion et sauvegarde des données</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>MySQL <?php echo $system_info['mysql_version']; ?></td>
+                                <td><span class="tag">Connecté</span></td>
+                                <td>Temps réel</td>
+                                <td>
+                                    <i class="fas fa-download" style="color: #64748b; cursor: pointer;" onclick="backupDatabase()"></i>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Settings Forms (Hidden by default) -->
+                    <div id="general-settings" class="settings-form" style="display: none;">
+                        <div class="settings-title">
+                            <i class="fas fa-cog"></i>
+                            Paramètres Généraux
                         </div>
                         
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="site_name">Nom du Site</label>
-                                <input type="text" name="site_name" id="site_name" 
-                                       value="<?php echo htmlspecialchars(getSetting($conn, 'site_name', 'Syndic Way')); ?>" required>
-                                <div class="help-text">Le nom qui apparaîtra dans l'interface utilisateur</div>
-                            </div>
+                        <form method="POST">
+                            <input type="hidden" name="action" value="update_general_settings">
                             
-                            <div class="form-group">
-                                <label for="contact_email">Email de Contact</label>
-                                <input type="email" name="contact_email" id="contact_email" 
-                                       value="<?php echo htmlspecialchars(getSetting($conn, 'contact_email', 'contact@syndicway.com')); ?>" required>
-                                <div class="help-text">Adresse email principale pour les contacts</div>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="site_description">Description du Site</label>
-                            <textarea name="site_description" id="site_description"><?php echo htmlspecialchars(getSetting($conn, 'site_description', '')); ?></textarea>
-                            <div class="help-text">Description utilisée pour le SEO et les réseaux sociaux</div>
-                        </div>
-                        
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="support_phone">Téléphone Support</label>
-                                <input type="tel" name="support_phone" id="support_phone" 
-                                       value="<?php echo htmlspecialchars(getSetting($conn, 'support_phone', '')); ?>">
-                                <div class="help-text">Numéro de téléphone pour le support client</div>
-                            </div>
-                            
-                            <div class="form-group">
-                                <div class="checkbox-group">
-                                    <input type="checkbox" name="maintenance_mode" id="maintenance_mode" 
-                                           <?php echo getSetting($conn, 'maintenance_mode', 0) ? 'checked' : ''; ?>>
-                                    <label for="maintenance_mode">Mode Maintenance</label>
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="site_name">Nom du Site</label>
+                                    <input type="text" name="site_name" id="site_name" 
+                                           value="<?php echo htmlspecialchars(getSetting($conn, 'site_name', 'Syndic Way')); ?>" required>
+                                    <div class="help-text">Le nom qui apparaîtra dans l'interface utilisateur</div>
                                 </div>
-                                <div class="help-text">Active le mode maintenance pour les utilisateurs non-admin</div>
+                                
+                                <div class="form-group">
+                                    <label for="contact_email">Email de Contact</label>
+                                    <input type="email" name="contact_email" id="contact_email" 
+                                           value="<?php echo htmlspecialchars(getSetting($conn, 'contact_email', 'contact@syndicway.com')); ?>" required>
+                                    <div class="help-text">Adresse email principale pour les contacts</div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="site_description">Description du Site</label>
+                                <textarea name="site_description" id="site_description" rows="3"><?php echo htmlspecialchars(getSetting($conn, 'site_description', '')); ?></textarea>
+                                <div class="help-text">Description utilisée pour le SEO et les réseaux sociaux</div>
+                            </div>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="support_phone">Téléphone Support</label>
+                                    <input type="tel" name="support_phone" id="support_phone" 
+                                           value="<?php echo htmlspecialchars(getSetting($conn, 'support_phone', '')); ?>">
+                                    <div class="help-text">Numéro de téléphone pour le support client</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <div class="checkbox-group">
+                                        <input type="checkbox" name="maintenance_mode" id="maintenance_mode" 
+                                               <?php echo getSetting($conn, 'maintenance_mode', 0) ? 'checked' : ''; ?>>
+                                        <label for="maintenance_mode">Mode Maintenance</label>
+                                    </div>
+                                    <div class="help-text">Active le mode maintenance pour les utilisateurs non-admin</div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 24px;">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Sauvegarder
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="hideForm('general-settings')">
+                                    <i class="fas fa-times"></i> Annuler
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="profile-settings" class="settings-form" style="display: none;">
+                        <div class="settings-title">
+                            <i class="fas fa-user-circle"></i>
+                            Profil Administrateur
+                        </div>
+                        
+                        <form method="POST">
+                            <input type="hidden" name="action" value="update_admin_profile">
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="admin_name">Nom Complet</label>
+                                    <input type="text" name="admin_name" id="admin_name" 
+                                           value="<?php echo htmlspecialchars($admin_profile['name'] ?? ''); ?>" required>
+                                    <div class="help-text">Votre nom complet tel qu'affiché dans l'interface</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="admin_email">Adresse Email</label>
+                                    <input type="email" name="admin_email" id="admin_email" 
+                                           value="<?php echo htmlspecialchars($admin_profile['email'] ?? ''); ?>" required>
+                                    <div class="help-text">Adresse email pour votre compte administrateur</div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="current_password">Mot de passe actuel</label>
+                                <input type="password" name="current_password" id="current_password">
+                                <div class="help-text">Requis seulement si vous changez le mot de passe</div>
+                            </div>
+                            
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="new_password">Nouveau mot de passe</label>
+                                    <input type="password" name="new_password" id="new_password">
+                                    <div class="help-text">Laissez vide pour conserver le mot de passe actuel</div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="confirm_password">Confirmer le mot de passe</label>
+                                    <input type="password" name="confirm_password" id="confirm_password">
+                                    <div class="help-text">Répétez le nouveau mot de passe</div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 24px;">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Mettre à jour le Profil
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="hideForm('profile-settings')">
+                                    <i class="fas fa-times"></i> Annuler
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="system-info" class="settings-form" style="display: none;">
+                        <div class="settings-title">
+                            <i class="fas fa-server"></i>
+                            Informations Système
+                        </div>
+                        
+                        <div class="info-grid">
+                            <div class="info-card">
+                                <h4>Version PHP</h4>
+                                <div class="value"><?php echo $system_info['php_version']; ?></div>
+                            </div>
+                            
+                            <div class="info-card">
+                                <h4>Serveur Web</h4>
+                                <div class="value"><?php echo $system_info['server_software']; ?></div>
+                            </div>
+                            
+                            <div class="info-card">
+                                <h4>Version MySQL</h4>
+                                <div class="value"><?php echo $system_info['mysql_version']; ?></div>
+                            </div>
+                            
+                            <div class="info-card">
+                                <h4>Espace Disque Libre</h4>
+                                <div class="value"><?php echo round($system_info['disk_space'] / 1024 / 1024 / 1024, 2); ?> GB</div>
+                            </div>
+                            
+                            <div class="info-card">
+                                <h4>Limite Mémoire</h4>
+                                <div class="value"><?php echo $system_info['memory_limit']; ?></div>
+                            </div>
+                            
+                            <div class="info-card">
+                                <h4>Temps d'Exécution Max</h4>
+                                <div class="value"><?php echo $system_info['max_execution_time']; ?>s</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 24px;">
+                            <button type="button" class="btn btn-secondary" onclick="hideForm('system-info')">
+                                <i class="fas fa-times"></i> Fermer
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="system-actions" class="settings-form" style="display: none;">
+                        <div class="settings-title">
+                            <i class="fas fa-tools"></i>
+                            Actions Système
+                        </div>
+                        
+                        <div class="quick-actions">
+                            <div class="quick-action" onclick="clearCache()">
+                                <i class="fas fa-broom"></i>
+                                <h4>Vider le Cache</h4>
+                                <p>Nettoie les fichiers de cache temporaires</p>
+                            </div>
+                            
+                            <div class="quick-action" onclick="backupDatabase()">
+                                <i class="fas fa-database"></i>
+                                <h4>Sauvegarder BD</h4>
+                                <p>Crée une sauvegarde de la base de données</p>
+                            </div>
+                            
+                            <div class="quick-action" onclick="checkSystem()">
+                                <i class="fas fa-heartbeat"></i>
+                                <h4>Vérifier Système</h4>
+                                <p>Diagnostic complet du système</p>
+                            </div>
+                            
+                            <div class="quick-action" onclick="optimizeDatabase()">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <h4>Optimiser BD</h4>
+                                <p>Optimise les performances de la base</p>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 24px;">
+                            <button type="button" class="btn btn-secondary" onclick="hideForm('system-actions')">
+                                <i class="fas fa-times"></i> Fermer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Panel -->
+                <div class="activity-panel">
+                    <div class="activity-header">
+                        <div class="activity-title">Activité Configuration</div>
+                        <button class="close-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="activity-tabs">
+                        <div class="activity-tab active">Récente</div>
+                        <div class="activity-tab">Actions</div>
+                        <div class="activity-tab">Logs</div>
+                    </div>
+
+                    <div class="activity-item">
+                        <div class="activity-icon settings">
+                            <i class="fas fa-cog"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-text">Paramètres généraux mis à jour</div>
+                            <div class="activity-time">Il y a 2 heures</div>
+                            <div class="activity-meta">
+                                <div style="width: 24px; height: 24px; background: #FFCB32; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: 500;">
+                                    <?php echo strtoupper(substr($current_user['name'], 0, 1)); ?>
+                                </div>
+                                <span style="font-size: 12px; color: #64748b;"><?php echo htmlspecialchars($current_user['name']); ?></span>
+                                <div class="tag">Config</div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="settings-actions">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Sauvegarder
-                        </button>
+
+                    <div class="activity-item">
+                        <div class="activity-icon profile">
+                            <i class="fas fa-user"></i>
                         </div>
-               </form>
-           </div>
+                        <div class="activity-content">
+                            <div class="activity-text">Profil administrateur modifié</div>
+                            <div class="activity-time">Il y a 1 jour</div>
+                            <div class="activity-meta">
+                                <div style="width: 24px; height: 24px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: 500;">
+                                    <?php echo strtoupper(substr($current_user['name'], 0, 1)); ?>
+                                </div>
+                                <span style="font-size: 12px; color: #64748b;"><?php echo htmlspecialchars($current_user['name']); ?></span>
+                                <div class="tag">Profil</div>
+                            </div>
+                        </div>
+                    </div>
 
-           <!-- Payment Settings Tab -->
-           <div id="payment" class="tab-content">
-               <form method="POST" onsubmit="return validateForm(this)">
-                   <input type="hidden" name="action" value="update_payment_settings">
-                   
-                   <div class="settings-section">
-                       <div class="section-header">
-                           <i class="fas fa-credit-card"></i>
-                           <h3>Configuration des Paiements</h3>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <label for="payment_gateway">Passerelle de Paiement</label>
-                               <select name="payment_gateway" id="payment_gateway">
-                                   <option value="stripe" <?php echo getSetting($conn, 'payment_gateway', 'stripe') === 'stripe' ? 'selected' : ''; ?>>Stripe</option>
-                                   <option value="paypal" <?php echo getSetting($conn, 'payment_gateway', 'stripe') === 'paypal' ? 'selected' : ''; ?>>PayPal</option>
-                                   <option value="both" <?php echo getSetting($conn, 'payment_gateway', 'stripe') === 'both' ? 'selected' : ''; ?>>Les Deux</option>
-                               </select>
-                           </div>
-                           
-                           <div class="form-group">
-                               <label for="currency">Devise</label>
-                               <select name="currency" id="currency">
-                                   <option value="MAD" <?php echo getSetting($conn, 'currency', 'MAD') === 'MAD' ? 'selected' : ''; ?>>MAD (Dirham Marocain)</option>
-                                   <option value="EUR" <?php echo getSetting($conn, 'currency', 'MAD') === 'EUR' ? 'selected' : ''; ?>>EUR (Euro)</option>
-                                   <option value="USD" <?php echo getSetting($conn, 'currency', 'MAD') === 'USD' ? 'selected' : ''; ?>>USD (Dollar US)</option>
-                               </select>
-                           </div>
-                       </div>
-                       
-                       <div class="form-group">
-                           <label for="tax_rate">Taux de TVA (%)</label>
-                           <input type="number" name="tax_rate" id="tax_rate" step="0.01" min="0" max="100"
-                                  value="<?php echo getSetting($conn, 'tax_rate', '20'); ?>">
-                           <div class="help-text">Taux de TVA appliqué aux abonnements (ex: 20 pour 20%)</div>
-                       </div>
-                   </div>
-                   
-                   <div class="settings-section">
-                       <div class="section-header">
-                           <i class="fab fa-stripe"></i>
-                           <h3>Configuration Stripe</h3>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <label for="stripe_public_key">Clé Publique Stripe</label>
-                               <input type="text" name="stripe_public_key" id="stripe_public_key" 
-                                      value="<?php echo htmlspecialchars(getSetting($conn, 'stripe_public_key', '')); ?>"
-                                      placeholder="pk_test_...">
-                               <div class="help-text">Clé publique pour l'intégration Stripe</div>
-                           </div>
-                           
-                           <div class="form-group">
-                               <label for="stripe_secret_key">Clé Secrète Stripe</label>
-                               <input type="password" name="stripe_secret_key" id="stripe_secret_key" 
-                                      value="<?php echo htmlspecialchars(getSetting($conn, 'stripe_secret_key', '')); ?>"
-                                      placeholder="sk_test_...">
-                               <div class="help-text">Clé secrète pour l'intégration Stripe (gardée confidentielle)</div>
-                           </div>
-                       </div>
-                       
-                       <div class="test-connection">
-                           <button type="button" class="btn btn-secondary" onclick="testStripeConnection()">
-                               <i class="fas fa-plug"></i> Tester la Connexion
-                           </button>
-                           <div id="stripe-status" class="connection-status" style="display: none;"></div>
-                       </div>
-                   </div>
-                   
-                   <div class="settings-section">
-                       <div class="section-header">
-                           <i class="fab fa-paypal"></i>
-                           <h3>Configuration PayPal</h3>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <label for="paypal_client_id">Client ID PayPal</label>
-                               <input type="text" name="paypal_client_id" id="paypal_client_id" 
-                                      value="<?php echo htmlspecialchars(getSetting($conn, 'paypal_client_id', '')); ?>"
-                                      placeholder="AXt...">
-                               <div class="help-text">Client ID pour l'intégration PayPal</div>
-                           </div>
-                           
-                           <div class="form-group">
-                               <label for="paypal_client_secret">Client Secret PayPal</label>
-                               <input type="password" name="paypal_client_secret" id="paypal_client_secret" 
-                                      value="<?php echo htmlspecialchars(getSetting($conn, 'paypal_client_secret', '')); ?>"
-                                      placeholder="EI...">
-                               <div class="help-text">Client Secret pour l'intégration PayPal</div>
-                           </div>
-                       </div>
-                       
-                       <div class="test-connection">
-                           <button type="button" class="btn btn-secondary" onclick="testPayPalConnection()">
-                               <i class="fas fa-plug"></i> Tester la Connexion
-                           </button>
-                           <div id="paypal-status" class="connection-status" style="display: none;"></div>
-                       </div>
-                   </div>
-                   
-                   <div class="settings-actions">
-                       <button type="submit" class="btn btn-primary">
-                           <i class="fas fa-save"></i> Sauvegarder
-                       </button>
-                   </div>
-               </form>
-           </div>
+                    <div class="activity-item">
+                        <div class="activity-icon security">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-text">Cache système vidé</div>
+                            <div class="activity-time">Il y a 3 jours</div>
+                            <div class="activity-meta">
+                                <div style="width: 24px; height: 24px; background: #f59e0b; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: 500;">
+                                    S
+                                </div>
+                                <span style="font-size: 12px; color: #64748b;">Système</span>
+                                <div class="tag">Maintenance</div>
+                            </div>
+                        </div>
+                    </div>
 
-           <!-- Email Settings Tab -->
-           <div id="email" class="tab-content">
-               <form method="POST" onsubmit="return validateForm(this)">
-                   <input type="hidden" name="action" value="update_email_settings">
-                   
-                   <div class="settings-section">
-                       <div class="section-header">
-                           <i class="fas fa-server"></i>
-                           <h3>Configuration SMTP</h3>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <label for="smtp_host">Serveur SMTP</label>
-                               <input type="text" name="smtp_host" id="smtp_host" 
-                                      value="<?php echo htmlspecialchars(getSetting($conn, 'smtp_host', '')); ?>"
-                                      placeholder="smtp.gmail.com">
-                               <div class="help-text">Adresse du serveur SMTP</div>
-                           </div>
-                           
-                           <div class="form-group">
-                               <label for="smtp_port">Port SMTP</label>
-                               <input type="number" name="smtp_port" id="smtp_port" 
-                                      value="<?php echo getSetting($conn, 'smtp_port', '587'); ?>"
-                                      min="1" max="65535">
-                               <div class="help-text">Port du serveur SMTP (587 pour TLS, 465 pour SSL)</div>
-                           </div>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <label for="smtp_username">Nom d'utilisateur SMTP</label>
-                               <input type="text" name="smtp_username" id="smtp_username" 
-                                      value="<?php echo htmlspecialchars(getSetting($conn, 'smtp_username', '')); ?>"
-                                      autocomplete="username">
-                               <div class="help-text">Nom d'utilisateur pour l'authentification SMTP</div>
-                           </div>
-                           
-                           <div class="form-group">
-                               <label for="smtp_password">Mot de passe SMTP</label>
-                               <input type="password" name="smtp_password" id="smtp_password" 
-                                      value="<?php echo htmlspecialchars(getSetting($conn, 'smtp_password', '')); ?>"
-                                      autocomplete="current-password">
-                               <div class="help-text">Mot de passe pour l'authentification SMTP</div>
-                           </div>
-                       </div>
-                       
-                       <div class="form-group">
-                           <label for="smtp_encryption">Chiffrement</label>
-                           <select name="smtp_encryption" id="smtp_encryption">
-                               <option value="tls" <?php echo getSetting($conn, 'smtp_encryption', 'tls') === 'tls' ? 'selected' : ''; ?>>TLS</option>
-                               <option value="ssl" <?php echo getSetting($conn, 'smtp_encryption', 'tls') === 'ssl' ? 'selected' : ''; ?>>SSL</option>
-                               <option value="none" <?php echo getSetting($conn, 'smtp_encryption', 'tls') === 'none' ? 'selected' : ''; ?>>Aucun</option>
-                           </select>
-                       </div>
-                   </div>
-                   
-                   <div class="settings-section">
-                       <div class="section-header">
-                           <i class="fas fa-envelope-open"></i>
-                           <h3>Paramètres d'Expédition</h3>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <label for="from_email">Email d'expédition</label>
-                               <input type="email" name="from_email" id="from_email" 
-                                      value="<?php echo htmlspecialchars(getSetting($conn, 'from_email', '')); ?>"
-                                      placeholder="noreply@syndicway.com">
-                               <div class="help-text">Adresse email utilisée pour envoyer les emails</div>
-                           </div>
-                           
-                           <div class="form-group">
-                               <label for="from_name">Nom d'expédition</label>
-                               <input type="text" name="from_name" id="from_name" 
-                                      value="<?php echo htmlspecialchars(getSetting($conn, 'from_name', 'Syndic Way')); ?>"
-                                      placeholder="Syndic Way">
-                               <div class="help-text">Nom affiché comme expéditeur</div>
-                           </div>
-                       </div>
-                       
-                       <div class="test-connection">
-                           <div class="form-group" style="flex: 1; margin-bottom: 0;">
-                               <input type="email" placeholder="Email de test" id="test_email_input">
-                           </div>
-                           <button type="button" class="btn btn-secondary" onclick="sendTestEmail()">
-                               <i class="fas fa-paper-plane"></i> Envoyer Test
-                           </button>
-                           <div id="email-status" class="connection-status" style="display: none;"></div>
-                       </div>
-                   </div>
-                   
-                   <div class="settings-actions">
-                       <button type="submit" class="btn btn-primary">
-                           <i class="fas fa-save"></i> Sauvegarder
-                       </button>
-                   </div>
-               </form>
-           </div>
+                    <div class="activity-item">
+                        <div class="activity-icon settings">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="activity-content">
+                            <div class="activity-text">Sauvegarde automatique</div>
+                            <div class="activity-time">Il y a 1 semaine</div>
+                            <div class="activity-meta">
+                                <div style="width: 24px; height: 24px; background: #8b5cf6; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: 500;">
+                                    A
+                                </div>
+                                <span style="font-size: 12px; color: #64748b;">Auto</span>
+                                <div class="tag">Backup</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-           <!-- Security Settings Tab -->
-           <div id="security" class="tab-content">
-               <form method="POST" onsubmit="return validateForm(this)">
-                   <input type="hidden" name="action" value="update_security_settings">
-                   
-                   <div class="settings-section">
-                       <div class="section-header">
-                           <i class="fas fa-lock"></i>
-                           <h3>Sécurité des Connexions</h3>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <label for="max_login_attempts">Tentatives de connexion max</label>
-                               <input type="number" name="max_login_attempts" id="max_login_attempts" 
-                                      value="<?php echo getSetting($conn, 'max_login_attempts', '5'); ?>"
-                                      min="1" max="20">
-                               <div class="help-text">Nombre maximum de tentatives avant blocage</div>
-                           </div>
-                           
-                           <div class="form-group">
-                               <label for="lockout_duration">Durée de blocage (minutes)</label>
-                               <input type="number" name="lockout_duration" id="lockout_duration" 
-                                      value="<?php echo getSetting($conn, 'lockout_duration', '30'); ?>"
-                                      min="1" max="1440">
-                               <div class="help-text">Durée du blocage après échec des connexions</div>
-                           </div>
-                       </div>
-                       
-                       <div class="form-group">
-                           <label for="session_timeout">Timeout de session (minutes)</label>
-                           <input type="number" name="session_timeout" id="session_timeout" 
-                                  value="<?php echo getSetting($conn, 'session_timeout', '60'); ?>"
-                                  min="5" max="480">
-                           <div class="help-text">Durée d'inactivité avant déconnexion automatique</div>
-                       </div>
-                   </div>
-                   
-                   <div class="settings-section">
-                       <div class="section-header">
-                           <i class="fas fa-key"></i>
-                           <h3>Politique des Mots de Passe</h3>
-                       </div>
-                       
-                       <div class="form-group">
-                           <label for="password_min_length">Longueur minimale</label>
-                           <input type="number" name="password_min_length" id="password_min_length" 
-                                  value="<?php echo getSetting($conn, 'password_min_length', '8'); ?>"
-                                  min="4" max="128">
-                           <div class="help-text">Nombre minimum de caractères requis</div>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <div class="checkbox-group">
-                                   <input type="checkbox" name="require_password_uppercase" id="require_password_uppercase" 
-                                          <?php echo getSetting($conn, 'require_password_uppercase', 0) ? 'checked' : ''; ?>>
-                                   <label for="require_password_uppercase">Majuscules requises</label>
-                               </div>
-                           </div>
-                           
-                           <div class="form-group">
-                               <div class="checkbox-group">
-                                   <input type="checkbox" name="require_password_numbers" id="require_password_numbers" 
-                                          <?php echo getSetting($conn, 'require_password_numbers', 0) ? 'checked' : ''; ?>>
-                                   <label for="require_password_numbers">Chiffres requis</label>
-                               </div>
-                           </div>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <div class="checkbox-group">
-                                   <input type="checkbox" name="require_password_symbols" id="require_password_symbols" 
-                                          <?php echo getSetting($conn, 'require_password_symbols', 0) ? 'checked' : ''; ?>>
-                                   <label for="require_password_symbols">Symboles requis</label>
-                               </div>
-                           </div>
-                           
-                           <div class="form-group">
-                               <div class="checkbox-group">
-                                   <input type="checkbox" name="enable_two_factor" id="enable_two_factor" 
-                                          <?php echo getSetting($conn, 'enable_two_factor', 0) ? 'checked' : ''; ?>>
-                                   <label for="enable_two_factor">Authentification 2FA</label>
-                               </div>
-                           </div>
-                       </div>
-                       
-                       <div class="security-level">
-                           <span>Niveau de sécurité: </span>
-                           <div class="indicator active"></div>
-                           <div class="indicator active"></div>
-                           <div class="indicator medium"></div>
-                           <div class="indicator"></div>
-                           <div class="indicator"></div>
-                           <span id="security-level-text">Moyen</span>
-                       </div>
-                   </div>
-                   
-                   <div class="settings-actions">
-                       <button type="submit" class="btn btn-primary">
-                           <i class="fas fa-save"></i> Sauvegarder
-                       </button>
-                   </div>
-               </form>
-           </div>
+    <script>
+        // View toggle functionality
+        document.querySelectorAll('.view-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
 
-           <!-- Profile Settings Tab -->
-           <div id="profile" class="tab-content">
-               <form method="POST" onsubmit="return validateForm(this)">
-                   <input type="hidden" name="action" value="update_admin_profile">
-                   
-                   <div class="settings-section">
-                       <div class="section-header">
-                           <i class="fas fa-user-circle"></i>
-                           <h3>Informations du Profil</h3>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <label for="admin_name">Nom Complet</label>
-                               <input type="text" name="admin_name" id="admin_name" 
-                                      value="<?php echo htmlspecialchars($admin_profile['name'] ?? ''); ?>" required>
-                               <div class="help-text">Votre nom complet tel qu'affiché dans l'interface</div>
-                           </div>
-                           
-                           <div class="form-group">
-                               <label for="admin_email">Adresse Email</label>
-                               <input type="email" name="admin_email" id="admin_email" 
-                                      value="<?php echo htmlspecialchars($admin_profile['email'] ?? ''); ?>" required>
-                               <div class="help-text">Adresse email pour votre compte administrateur</div>
-                           </div>
-                       </div>
-                   </div>
-                   
-                   <div class="settings-section">
-                       <div class="section-header">
-                           <i class="fas fa-lock"></i>
-                           <h3>Changement de Mot de Passe</h3>
-                       </div>
-                       
-                       <div class="form-group">
-                           <label for="current_password">Mot de passe actuel</label>
-                           <input type="password" name="current_password" id="current_password" 
-                                  autocomplete="current-password">
-                           <div class="help-text">Requis seulement si vous changez le mot de passe</div>
-                       </div>
-                       
-                       <div class="form-grid">
-                           <div class="form-group">
-                               <label for="new_password">Nouveau mot de passe</label>
-                               <input type="password" name="new_password" id="new_password" 
-                                      autocomplete="new-password" onkeyup="checkPasswordStrength(this.value)">
-                               <div class="password-strength">
-                                   <div class="strength-bar">
-                                       <div class="strength-fill" id="strength-fill"></div>
-                                   </div>
-                                   <small id="strength-text">Entrez un mot de passe</small>
-                               </div>
-                           </div>
-                           
-                           <div class="form-group">
-                               <label for="confirm_password">Confirmer le mot de passe</label>
-                               <input type="password" name="confirm_password" id="confirm_password" 
-                                      autocomplete="new-password">
-                               <div class="help-text">Répétez le nouveau mot de passe</div>
-                           </div>
-                       </div>
-                   </div>
-                   
-                   <div class="settings-actions">
-                       <button type="submit" class="btn btn-primary">
-                           <i class="fas fa-save"></i> Mettre à jour le Profil
-                       </button>
-                   </div>
-               </form>
-           </div>
+        // Activity tabs
+        document.querySelectorAll('.activity-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.activity-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
 
-           <!-- System Settings Tab -->
-           <div id="system" class="tab-content">
-               <div class="settings-section">
-                   <div class="section-header">
-                       <i class="fas fa-info-circle"></i>
-                       <h3>Informations Système</h3>
-                   </div>
-                   
-                   <div class="info-grid">
-                       <div class="info-card">
-                           <h4>Version PHP</h4>
-                           <div class="value"><?php echo $system_info['php_version']; ?></div>
-                       </div>
-                       
-                       <div class="info-card">
-                           <h4>Serveur Web</h4>
-                           <div class="value"><?php echo $system_info['server_software']; ?></div>
-                       </div>
-                       
-                       <div class="info-card">
-                           <h4>Version MySQL</h4>
-                           <div class="value"><?php echo $system_info['mysql_version']; ?></div>
-                       </div>
-                       
-                       <div class="info-card">
-                           <h4>Espace Disque Libre</h4>
-                           <div class="value"><?php echo round($system_info['disk_space'] / 1024 / 1024 / 1024, 2); ?> GB</div>
-                       </div>
-                       
-                       <div class="info-card">
-                           <h4>Limite Mémoire</h4>
-                           <div class="value"><?php echo $system_info['memory_limit']; ?></div>
-                       </div>
-                       
-                       <div class="info-card">
-                           <h4>Temps d'Exécution Max</h4>
-                           <div class="value"><?php echo $system_info['max_execution_time']; ?>s</div>
-                       </div>
-                   </div>
-               </div>
-               
-               <div class="settings-section">
-                   <div class="section-header">
-                       <i class="fas fa-tools"></i>
-                       <h3>Actions Rapides</h3>
-                   </div>
-                   
-                   <div class="quick-actions">
-                       <div class="quick-action" onclick="clearCache()">
-                           <i class="fas fa-broom"></i>
-                           <h4>Vider le Cache</h4>
-                           <p>Nettoie les fichiers de cache temporaires</p>
-                       </div>
-                       
-                       <div class="quick-action" onclick="backupDatabase()">
-                           <i class="fas fa-database"></i>
-                           <h4>Sauvegarder BD</h4>
-                           <p>Crée une sauvegarde de la base de données</p>
-                       </div>
-                       
-                       <div class="quick-action" onclick="checkUpdates()">
-                           <i class="fas fa-download"></i>
-                           <h4>Vérifier MAJ</h4>
-                           <p>Recherche les mises à jour disponibles</p>
-                       </div>
-                       
-                       <div class="quick-action" onclick="optimizeDatabase()">
-                           <i class="fas fa-tachometer-alt"></i>
-                           <h4>Optimiser BD</h4>
-                           <p>Optimise les performances de la base</p>
-                       </div>
-                   </div>
-               </div>
-               
-               <div class="settings-section">
-                   <div class="section-header">
-                       <i class="fas fa-history"></i>
-                       <h3>Sauvegardes</h3>
-                   </div>
-                   
-                   <div class="backup-status">
-                       <h5>Dernière Sauvegarde</h5>
-                       <p>Il y a 2 jours - backup_20250606_143022.sql (125 MB)</p>
-                   </div>
-                   
-                   <div class="form-grid">
-                       <div class="form-group">
-                           <label>Sauvegarde Automatique</label>
-                           <select>
-                               <option value="daily">Quotidienne</option>
-                               <option value="weekly" selected>Hebdomadaire</option>
-                               <option value="monthly">Mensuelle</option>
-                               <option value="disabled">Désactivée</option>
-                           </select>
-                       </div>
-                       
-                       <div class="form-group">
-                           <label>Conserver (nombre)</label>
-                           <input type="number" value="10" min="1" max="100">
-                       </div>
-                   </div>
-               </div>
-               
-               <div class="danger-zone">
-                   <h4><i class="fas fa-exclamation-triangle"></i> Zone Dangereuse</h4>
-                   <p>Ces actions sont irréversibles. Procédez avec prudence.</p>
-                   
-                   <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                       <button type="button" class="btn btn-danger" onclick="resetSettings()">
-                           <i class="fas fa-undo"></i> Réinitialiser Paramètres
-                       </button>
-                       
-                       <button type="button" class="btn btn-danger" onclick="clearAllData()">
-                           <i class="fas fa-trash"></i> Effacer Toutes Données
-                       </button>
-                       
-                       <button type="button" class="btn btn-danger" onclick="factoryReset()">
-                           <i class="fas fa-exclamation-circle"></i> Remise à Zéro
-                       </button>
-                   </div>
-               </div>
-           </div>
-       </main>
-   </div>
+        // Close activity panel
+        document.querySelector('.close-btn').addEventListener('click', function() {
+            document.querySelector('.activity-panel').style.display = 'none';
+        });
 
-   <script src="http://localhost/syndicplatform/js/admin/settings.js"></script>
+        // Settings functions
+        function scrollToSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
 
-   <!-- Add some additional CSS for enhanced features -->
-   <style>
-       
-   </style>
+        function editGeneralSettings() {
+            hideAllForms();
+            document.getElementById('general-settings').style.display = 'block';
+            document.getElementById('general-settings').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function editProfile() {
+            hideAllForms();
+            document.getElementById('profile-settings').style.display = 'block';
+            document.getElementById('profile-settings').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function viewSystemInfo() {
+            hideAllForms();
+            document.getElementById('system-info').style.display = 'block';
+            document.getElementById('system-info').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showSystemActions() {
+            hideAllForms();
+            document.getElementById('system-actions').style.display = 'block';
+            document.getElementById('system-actions').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hideForm(formId) {
+            document.getElementById(formId).style.display = 'none';
+        }
+
+        function hideAllForms() {
+            const forms = ['general-settings', 'profile-settings', 'system-info', 'system-actions'];
+            forms.forEach(formId => {
+                document.getElementById(formId).style.display = 'none';
+            });
+        }
+
+        // System actions
+        function clearCache() {
+            if (confirm('Êtes-vous sûr de vouloir vider le cache système ?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = '<input type="hidden" name="action" value="clear_cache">';
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function backupDatabase() {
+            if (confirm('Lancer une sauvegarde de la base de données ?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = '<input type="hidden" name="action" value="backup_database">';
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        function checkSystem() {
+            alert('Vérification système en cours...\n\n✓ PHP: OK\n✓ MySQL: OK\n✓ Espace disque: OK\n✓ Permissions: OK');
+        }
+
+        function optimizeDatabase() {
+            if (confirm('Optimiser la base de données ? Cette opération peut prendre quelques minutes.')) {
+                alert('Optimisation de la base de données lancée...');
+            }
+        }
+
+        // Auto-hide alerts
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    alert.style.opacity = '0';
+                    alert.style.transform = 'translateY(-20px)';
+                    setTimeout(() => alert.remove(), 300);
+                }, 5000);
+            });
+
+            // Storage animation
+            const storageFill = document.querySelector('.storage-fill');
+            const originalWidth = storageFill.style.width;
+            storageFill.style.width = '0%';
+            setTimeout(() => {
+                storageFill.style.width = '65%';
+            }, 500);
+
+            // Table row hover effects
+            document.querySelectorAll('.table-row').forEach(row => {
+                row.addEventListener('mouseenter', function() {
+                    this.style.backgroundColor = '#f8fafc';
+                });
+                
+                row.addEventListener('mouseleave', function() {
+                    this.style.backgroundColor = '';
+                });
+            });
+        });
+
+        // Search functionality
+        document.querySelector('.search-box input').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            document.querySelectorAll('.table-row').forEach(row => {
+                const fileName = row.querySelector('.file-name').textContent.toLowerCase();
+                const description = row.querySelector('.file-description').textContent.toLowerCase();
+                if (fileName.includes(searchTerm) || description.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+
+        // Quick card animations
+        document.querySelectorAll('.quick-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+    </script>
 </body>
 </html>

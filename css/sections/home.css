@@ -185,7 +185,7 @@ body {
 /* Services Section */
 .services {
     padding: 6rem 0;
-    ;
+margin: 0 4rem;
 }
 
 .services h2 {
@@ -228,6 +228,7 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 3rem;
     align-items: center;
+    margin: 0 4rem;
 }
 
 .offer-content {
@@ -419,6 +420,7 @@ body {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 2rem;
+    margin: 0 4rem;
 }
 
 .promise-card {
@@ -630,4 +632,210 @@ body {
         background-size: cover;
         height: 113vw;
     }
+}
+
+
+/* About Us Section */
+.about-us {
+    padding: 80px 0;
+    background-color: #fff;
+    position: relative;
+}
+
+.about-us::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 359px;
+    height: 374px;
+    background-image: url('/67864919bcd13ba47ad2d83f-matera-20website-20calque-202-svg.svg');
+    background-size: 100% 100%;
+    z-index: -1;
+}
+
+.section-title {
+    font-size: 35.6px;
+    line-height: 48px;
+    text-align: center;
+    margin-bottom: 48px;
+}
+
+.tabs {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 48px;
+}
+
+.tab-btn {
+    padding: 24px 32px;
+    border-radius: 64px;
+    background-color: transparent;
+    border: 1px solid #ddd;
+    font-size: 14px;
+    font-weight: 500;
+    color: #222;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tab-btn.active {
+    background-color: #ffcb32;
+    border-color: #ffcb32;
+}
+
+.tab-btn:hover {
+    background-color: #f5f5f5;
+}
+
+.testimonials-carousel {
+    position: relative;
+}
+
+.testimonials-container {
+    display: flex;
+    gap: 24px;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    padding-bottom: 20px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.testimonials-container::-webkit-scrollbar {
+    display: none;
+}
+
+.testimonial-card {
+    flex: 0 0 300px;
+    background-color: #fff;
+    border: 1px solid #000;
+    border-radius: 16px;
+    overflow: hidden;
+    height: 407px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.testimonial-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.testimonial-image {
+    height: 180px;
+    background-size: cover;
+    background-position: center;
+    position: relative;
+}
+
+.testimonial-badge {
+    position: absolute;
+    bottom: 16px;
+    left: 24px;
+    background-color: #fff;
+    border-radius: 80px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.badge-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #ffcb32;
+}
+
+.badge-dot-green {
+    background-color: #28a745;
+}
+
+.testimonial-content {
+    padding: 32px;
+    height: 225px;
+    background-color: #ffcb32;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.testimonial-content-green {
+    background-color: #28a745;
+}
+
+.testimonial-quote {
+    font-style: italic;
+    font-size: 13.8px;
+    line-height: 20px;
+    margin-bottom: 32px;
+}
+
+.testimonial-author {
+    font-size: 22px;
+    line-height: 36px;
+    font-weight: 400;
+    margin-bottom: 4px;
+}
+
+.testimonial-location {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.carousel-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 32px;
+}
+
+.carousel-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    background-color: #fff;
+    border: 1px solid #000;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.carousel-btn:hover {
+    background-color: #f5f5f5;
+    transform: scale(1.05);
+}
+
+.carousel-btn:active {
+    transform: scale(0.95);
+}
+
+.carousel-btn img {
+    width: 7px;
+    height: 12px;
+}
+
+.carousel-progress {
+    width: 160px;
+    height: 6px;
+    background-color: #ebebeb;
+    border-radius: 160px;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar {
+    width: 15px;
+    height: 6px;
+    background-color: #000;
+    border-radius: 160px;
+    transition: transform 0.3s ease;
 }

@@ -87,9 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $conn->prepare("
                 SELECT r.id_residence, r.name as building_name
                 FROM residence r
-                WHERE id_syndic = ?
+                LIMIT 1
             ");
-            $stmt->execute([$current_user['id']]);
+            $stmt->execute();
             $building = $stmt->fetch(PDO::FETCH_ASSOC);
             
             if (!$building) {
@@ -338,6 +338,7 @@ try {
 }
 
 $page_title = "Gestion des Résidents - Syndic Way";
+
 ?>
 
 <!DOCTYPE html>
