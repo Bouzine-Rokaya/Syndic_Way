@@ -17,9 +17,8 @@ switch ($page) {
     case 'service':
     require_once __DIR__ . '/../views/service.php';
     break;
-     case 'aboutUs':
-    require_once __DIR__ . '/../views/aboutUs.php';
-    break;
+ 
+
     case 'contact':
     require_once __DIR__ . '/../views/contact.php';
     break;
